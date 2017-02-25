@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE project>
+<configuration scan="true" debug="true" scanPerod="10 seconds">
+
+<!-- This appender prints to stdout: -->
+<appender name="stdout" class="ch.qos.logback.core.ConsoleAppender">
+	<Target>System.out</Target>
+	<encoder>
+		<pattern>%p %d{dd.MM.yyyy HH:mm:ss} [%c] \(%line\) - %m%n</pattern>
+	</encoder>
+</appender>
+
+<!-- This appender writes to file: -->
+<appender name="FILE" class="ch.qos.logback.core.FileAppender">
+    <file>D:/IDFVC_Folders/IDF_VC_Sim.log</file>
+    <append>true</append>
+    
+    <rollingPolicy class="ch.qos.logback.core.rolling.TimeBasedRollingPolicy">
+		<!-- daily rollover -->
+     	<fileNamePattern>IDF_VC.%d{yyyy-MM-dd}.log</fileNamePattern>
+
+      	<!-- keep 30 days' worth of history capped at 3GB total size -->
+      	<maxHistory>30</maxHistory>
+      	<totalSizeCap>3GB</totalSizeCap>
+
+	</rollingPolicy>
+	
+    <encoder>
+        <pattern>%p %d{dd.MM.yyyy HH:mm:ss} [%c] \(%line\) - %m%n</pattern>
+    </encoder>
+</appender>
+
+<!-- Log levels for specific packages or classes -->
+<logger name="default" level="INFO" />
+
+<!-- Log levels for all packages and classes can be controlled here: -->
+<root level="DEBUG">
+	<!-- add more appenders (rolling file, email, ...) here: -->
+	<appender-ref ref="stdout" />
+	<appender-ref ref="FILE" />
+</root>
+</configuration>
