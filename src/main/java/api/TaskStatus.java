@@ -34,14 +34,14 @@ public class TaskStatus extends HttpServlet {
         StringBuilder res = new StringBuilder();
         
         try(Jedis jedis = new Jedis("localhost")) {
-        	while((line = jedis.lpop("Task"+type+"#"+requestId)) != null){
-        		if(line.equals(type+"_FINISHED")){
-        			isFinished = true;
-        			jedis.del("Task"+type+"#"+requestId);
-        			break;
-        		}
-        		res.append(line);
-        	}
+            while((line = jedis.lpop("Task"+type+"#"+requestId)) != null){
+                if(line.equals(type+"_FINISHED")){
+                    isFinished = true;
+                    jedis.del("Task"+type+"#"+requestId);
+                    break;
+                }
+                res.append(line);
+            }
         }
         
         jo.addProperty("status", "success");
@@ -54,7 +54,7 @@ public class TaskStatus extends HttpServlet {
     
     @Override
     protected void doGet(HttpServletRequest request, HttpServletResponse response) throws ServletException, IOException {
-    	doPost(request,response);
+        doPost(request,response);
     }
 
 }

@@ -10,17 +10,17 @@ import main.java.config.EngineConfig;
 
 public class EnvLoad extends HttpServlet{
 private static final long serialVersionUID = 8760402126588557090L;
-	
-	private final Logger LOG = LoggerFactory.getLogger(EnvLoad.class);
+    
+    private final Logger LOG = LoggerFactory.getLogger(EnvLoad.class);
 
-	@Override
-	public void init() throws ServletException {
-		super.init();
-		
-		// Load configuration file
-		String configFilePath = this.getServletContext().getRealPath("/WEB-INF/engine.config");		
-		EngineConfig.setConfigPath(configFilePath);
-		
-		LOG.info("Simulation Engine Config file path: "+configFilePath);
-	}
+    @Override
+    public void init() throws ServletException {
+        super.init();
+        
+        // Load configuration file
+        String configFilePath = this.getServletContext().getRealPath("/WEB-INF/engine.config");        
+        EngineConfig.setConfigPath(configFilePath);
+        
+        LOG.info("Simulation Engine Config file path: "+configFilePath);
+    }
 }

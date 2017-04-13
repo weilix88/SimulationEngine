@@ -43,34 +43,34 @@ public class Test extends HttpServlet {
     }
     
     public static void main(String[] args){
-    	/*try(Jedis jedis = new Jedis("localhost")) {
+        /*try(Jedis jedis = new Jedis("localhost")) {
             jedis.set("TaskQueue#status", "test_str");
             System.out.println("Write to Redis finished");
             jedis.quit();
         }
-    	try {
+        try {
             Thread.sleep(2000);
         } catch (InterruptedException e) {
             e.printStackTrace();
         }*/
-    	try(Jedis jedis = new Jedis("localhost")){
-        	Set<String> keys = jedis.keys("TaskQueue");
-        	for(String key : keys){
+        try(Jedis jedis = new Jedis("localhost")){
+            Set<String> keys = jedis.keys("TaskQueue");
+            for(String key : keys){
                 jedis.del(key);
             }
             jedis.flushAll();
         }
-    	try(Jedis jedis = new Jedis("localhost")){
+        try(Jedis jedis = new Jedis("localhost")){
             String read = jedis.get("TaskQueue#status");
             System.out.println(read);
             jedis.quit();
         }
-    	try {
+        try {
             Thread.sleep(2000);
         } catch (InterruptedException e) {
             e.printStackTrace();
         }
-    	try(Jedis jedis = new Jedis("localhost")){
+        try(Jedis jedis = new Jedis("localhost")){
             String read = jedis.get("TaskQueue#status");
             System.out.println(read);
             jedis.quit();

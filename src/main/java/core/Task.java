@@ -32,24 +32,24 @@ public class Task {
     String errorContent = "";
    
     public String getHtmlContent() {
-		return htmlContent;
-	}
-	public void setHtmlContent(String htmlContent) {
-		this.htmlContent = htmlContent;
-	}
-	public String getErrorContent() {
-		return errorContent;
-	}
-	public void setErrorContent(String errorContent) {
-		this.errorContent = errorContent;
-	}
-	public String getWeatherFile() {
-		return weatherFile;
-	}
-	public void setWeatherFile(String weatherFile) {
-		this.weatherFile = weatherFile;
-	}
-	public String getStatus() {
+        return htmlContent;
+    }
+    public void setHtmlContent(String htmlContent) {
+        this.htmlContent = htmlContent;
+    }
+    public String getErrorContent() {
+        return errorContent;
+    }
+    public void setErrorContent(String errorContent) {
+        this.errorContent = errorContent;
+    }
+    public String getWeatherFile() {
+        return weatherFile;
+    }
+    public void setWeatherFile(String weatherFile) {
+        this.weatherFile = weatherFile;
+    }
+    public String getStatus() {
         return this.status;
     }
     public void setStatus(String status) {
@@ -113,11 +113,11 @@ public class Task {
     }
     
     public String getCommitId(){
-    	return this.commitId;
+        return this.commitId;
     }
     
     public void setCommitId(String commitId){
-    	this.commitId = commitId;
+        this.commitId = commitId;
     }
     
     /*public String getModelText() {
@@ -188,18 +188,18 @@ public class Task {
     }
     
     public String getIdfFilePath() {
-		return idfFilePath;
-	}
-	public void setIdfFilePath(String idfFilePath) {
-		this.idfFilePath = idfFilePath;
-	}
-	public String getVersion() {
-		return version;
-	}
-	public void setVersion(String version) {
-		this.version = version;
-	}
-	public void loadResultText(String filePath) {
+        return idfFilePath;
+    }
+    public void setIdfFilePath(String idfFilePath) {
+        this.idfFilePath = idfFilePath;
+    }
+    public String getVersion() {
+        return version;
+    }
+    public void setVersion(String version) {
+        this.version = version;
+    }
+    public void loadResultText(String filePath) {
         File f = new File(filePath);
         if (f.exists() && !f.isDirectory()) {
             this.resultText = readFile(filePath);
@@ -209,13 +209,13 @@ public class Task {
     public String readFile(String filePath) {
             StringBuilder sb = new StringBuilder();
         try (FileInputStream fis = new FileInputStream(new File(filePath));
-        		InputStreamReader isr = new InputStreamReader(fis, "UTF-8");
-        		BufferedReader br = new BufferedReader(isr)) {
+                InputStreamReader isr = new InputStreamReader(fis, "UTF-8");
+                BufferedReader br = new BufferedReader(isr)) {
     
             String sCurrentLine;
     
             while ((sCurrentLine = br.readLine()) != null) {
-            	sb.append(sCurrentLine).append("\r\n");
+                sb.append(sCurrentLine).append("\r\n");
             }
     
         } catch (IOException e) {
