@@ -130,12 +130,15 @@ public class TaskRunner implements Runnable {
             LOG.info("Task runner copied weather file "+task.getRequestId());
             
             String[] commandline = {batchPath, path+"IDF", "weatherfile"};
+            
+            BufferedReader stdInput = null;
+            BufferedReader stdError = null;
             try{
                 LOG.info("Task runner going to start simulation "+task.getRequestId());
                 Process pr = Runtime.getRuntime().exec(commandline, null, new File(path));
                 
-                BufferedReader stdInput = new BufferedReader(new InputStreamReader(pr.getInputStream()));
-                BufferedReader stdError = new BufferedReader(new InputStreamReader(pr.getErrorStream()));
+                stdInput = new BufferedReader(new InputStreamReader(pr.getInputStream()));
+                stdError = new BufferedReader(new InputStreamReader(pr.getErrorStream()));
                 
                 this.jedis = new Jedis("localhost");
 
@@ -178,6 +181,17 @@ public class TaskRunner implements Runnable {
             } finally {
                 this.jedis.quit();
                 this.jedis.close();
+                
+                if(stdInput!=null){
+                    try {
+                        stdInput.close();
+                    } catch (IOException e) {}
+                }
+                if(stdError!=null){
+                    try {
+                        stdError.close();
+                    } catch (IOException e) {}
+                }
             }
         }
     }
