@@ -78,9 +78,10 @@ public class TaskRunner implements Runnable {
     }
     
     private String copyWeatherFile(String weatherFile, String idfPath){
+        String country = weatherFile.split("_")[0];
         String state = weatherFile.split("_")[1];
         
-        File src = new File(EngineConfig.readProperty("WeatherFilesBasePath")+state+"\\"+weatherFile+".epw");
+        File src = new File(EngineConfig.readProperty("WeatherFilesBasePath")+country+"\\"+state+"\\"+weatherFile+".epw");
         File dest = new File(idfPath+"\\weatherfile.epw");
         try {
             FileUtils.copyFile(src, dest);
