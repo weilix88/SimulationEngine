@@ -168,8 +168,9 @@ public class TaskRunner implements Runnable {
                 
                 jedis.set("Taskhtml#"+task.getRequestId(), readTextFile(path+"IDFTable.html"));
                 jedis.set("Taskerr#"+task.getRequestId(), readTextFile(path+"IDF.err"));
-                jedis.set("Taskhtmlcommitid#"+task.getRequestId(), task.getCommitId());
-                jedis.set("Taskerrcommitid#"+task.getRequestId(), task.getCommitId());
+                jedis.set("Taskcsv#"+task.getRequestId(), readTextFile(path+"IDF.csv"));
+                //jedis.set("Taskhtmlcommitid#"+task.getRequestId(), task.getCommitId());
+                //jedis.set("Taskerrcommitid#"+task.getRequestId(), task.getCommitId());
                 
                 
                 FileUtils.deleteDirectory(new File(path));
