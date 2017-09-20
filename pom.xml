@@ -70,5 +70,10 @@
     	<artifactId>commons-configuration</artifactId>
     	<version>1.10</version>
 	</dependency>
+	<dependency>
+        <groupId>com.amazonaws</groupId>
+        <artifactId>aws-java-sdk-s3</artifactId>
+        <version>1.11.144</version>
+    </dependency>
   </dependencies>
 </project>

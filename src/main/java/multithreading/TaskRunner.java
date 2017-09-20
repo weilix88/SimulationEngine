@@ -13,6 +13,10 @@ import org.apache.commons.io.FileUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import com.google.gson.JsonArray;
+
+import main.java.aws.meta.PathUtil;
+import main.java.aws.s3.S3FileDownloader;
 import main.java.config.EngineConfig;
 import main.java.core.Task;
 import redis.clients.jedis.Jedis;
@@ -92,6 +96,27 @@ public class TaskRunner implements Runnable {
         return null;
     }
     
+    private void downloadCSV(String idfPath){
+        JsonArray ja = task.getCsvs();
+        if(ja!=null && ja.size()>0){
+            String bucketName = task.getS3Bucket();
+            String path = PathUtil.PROJECT_SCHEDULE+"/";
+            
+            S3FileDownloader downloader = new S3FileDownloader(null);
+            for(int i=0;i<ja.size();i++){
+                String fileName = ja.get(i).getAsString();
+                File csvFile = downloader.download(bucketName, path, fileName);
+                
+                File dest = new File(idfPath+"\\"+fileName);
+                try {
+                    FileUtils.copyFile(csvFile, dest);
+                } catch (IOException e) {
+                    LOG.error(e.getMessage(), e);
+                }
+            }
+        }
+    }
+    
     private String readTextFile(String path){
         //LOG.info(path);
         
@@ -129,6 +154,9 @@ public class TaskRunner implements Runnable {
         
         if(batchPath!=null && copyWeatherFile(weatherFile, path)!=null){
             LOG.info("Task runner copied weather file "+task.getRequestId());
+            
+            downloadCSV(path);
+            LOG.info("Task runner downloaded CSV files "+task.getRequestId());
             
             String[] commandline = {batchPath, path+"IDF", "weatherfile"};
             
@@ -169,8 +197,6 @@ public class TaskRunner implements Runnable {
                 jedis.set("Taskhtml#"+task.getRequestId(), readTextFile(path+"IDFTable.html"));
                 jedis.set("Taskerr#"+task.getRequestId(), readTextFile(path+"IDF.err"));
                 jedis.set("Taskcsv#"+task.getRequestId(), readTextFile(path+"IDF.csv"));
-                //jedis.set("Taskhtmlcommitid#"+task.getRequestId(), task.getCommitId());
-                //jedis.set("Taskerrcommitid#"+task.getRequestId(), task.getCommitId());
                 
                 
                 FileUtils.deleteDirectory(new File(path));

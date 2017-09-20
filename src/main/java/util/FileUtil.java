@@ -16,17 +16,31 @@ import org.apache.commons.io.IOUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import main.java.config.EngineConfig;
+
 public class FileUtil {
     private static final Logger LOG = LoggerFactory.getLogger(FileUtil.class);
     
-    public static File convertInputStreamToFile(InputStream is){
+    public static File createTempFile(String fileName){
         File res = null;
-        try {
-            res = File.createTempFile("ISToFile_"+RandomUtil.genRandomStr(), "temp");
-            res.deleteOnExit();
-            try(FileOutputStream out = new FileOutputStream(res)){
-                IOUtils.copy(is, out);
-            }
+        
+        String tmpfolder = EngineConfig.readProperty("tmpfolder");
+        String randomFolderPath = tmpfolder+"ISToFile_"+RandomUtil.genRandomStr()+"\\";
+        
+        File randomFolder = new File(randomFolderPath);
+        randomFolder.mkdir();
+        
+        res = new File(randomFolderPath+fileName);
+        res.deleteOnExit();
+        
+        return res;
+    }
+    
+    public static File convertInputStreamToFile(InputStream is){
+        File res = createTempFile("ISToFile.tmp");
+
+        try(FileOutputStream out = new FileOutputStream(res)){
+            IOUtils.copy(is, out);
         } catch (IOException e) {
             LOG.error(e.getMessage(), e);
         }
@@ -34,16 +48,11 @@ public class FileUtil {
     }
     
     public static File convertStringToFile(String str){
-        File res = null;
-        try {
-            res = File.createTempFile("StrToFile_"+RandomUtil.genRandomStr(), "temp");
-            res.deleteOnExit();
-            
-            try(FileWriter fw = new FileWriter(res);
-                    BufferedWriter bw = new BufferedWriter(fw)){
-                bw.write(str);
-                bw.flush();
-            }
+        File res = createTempFile("StrToFile.tmp");
+        try(FileWriter fw = new FileWriter(res);
+                BufferedWriter bw = new BufferedWriter(fw)){
+            bw.write(str);
+            bw.flush();
         } catch (IOException e) {
             LOG.error(e.getMessage(), e);
         }
@@ -90,5 +99,19 @@ public class FileUtil {
             fileName = fileName.substring(0, 255-suffixLen);
         }
         return fileName+suffix;
+    }
+    
+    public static String getSuffix(String fileName){
+        if(fileName==null){
+            return null;
+        }
+        
+        fileName = fileName.toLowerCase();
+        int lastDot = fileName.lastIndexOf(".");
+        if(lastDot==-1){
+            return "NO_TYPE";
+        }
+        
+        return fileName.substring(lastDot+1, fileName.length());
     }
 }

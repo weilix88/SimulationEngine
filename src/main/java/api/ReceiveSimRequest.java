@@ -22,7 +22,9 @@ import org.apache.commons.io.IOUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
+import com.google.gson.JsonParser;
 
 import main.java.config.EngineConfig;
 import main.java.core.Task;
@@ -49,6 +51,8 @@ public class ReceiveSimRequest extends HttpServlet{
         String version = null;
         String weatherFile = null;
         String commitId = null;
+        String s3Bucket = null;
+        JsonArray csvs = new JsonArray();
         File idfFile = null;
         String simBasePath = EngineConfig.readProperty("SimulationBasePath");
         
@@ -88,6 +92,13 @@ public class ReceiveSimRequest extends HttpServlet{
             if(fieldName.equals("sim_commit_id")){
                 commitId = IOUtils.toString(is, "UTF-8");
             }
+            if(fieldName.equals("s3_bucket")){
+                s3Bucket = IOUtils.toString(is, "UTF-8");
+            }
+            if(fieldName.equals("csvs")){
+                String jaContent = IOUtils.toString(is, "UTF-8");
+                csvs = new JsonParser().parse(jaContent).getAsJsonArray();
+            }
             
             is.close();
         }
@@ -112,6 +123,8 @@ public class ReceiveSimRequest extends HttpServlet{
             task.setVersion(version);
             task.setWeatherFile(weatherFile);
             task.setCommitId(commitId);
+            task.setS3Bucket(s3Bucket);
+            task.setCsvs(csvs);
             
             LOG.info("Sim request receiver built task "+requestId);
             

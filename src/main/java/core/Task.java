@@ -8,6 +8,7 @@ import java.io.InputStreamReader;
 import java.util.Set;
 
 import com.google.gson.Gson;
+import com.google.gson.JsonArray;
 
 import redis.clients.jedis.Jedis;
 
@@ -27,6 +28,8 @@ public class Task {
     String version = null;
     String weatherFile = null;
     String commitId = null;
+    String s3Bucket = null;
+    JsonArray csvs = null;
     
     String htmlContent = "";
     String errorContent = "";
@@ -127,6 +130,18 @@ public class Task {
         this.modelText = modelText;
     }*/
     
+    public String getS3Bucket() {
+        return s3Bucket;
+    }
+    public JsonArray getCsvs() {
+        return csvs;
+    }
+    public void setCsvs(JsonArray csvs) {
+        this.csvs = csvs;
+    }
+    public void setS3Bucket(String s3Bucket) {
+        this.s3Bucket = s3Bucket;
+    }
     public void enqueue() {
         Gson gson = new Gson();
         String jsonInString = gson.toJson(this);
