@@ -37,10 +37,19 @@ public class TaskStatus extends HttpServlet {
             while((line = jedis.lpop("Task"+type+"#"+requestId)) != null){
                 if(line.equals(type+"_FINISHED")){
                     isFinished = true;
-                    jedis.del("Task"+type+"#"+requestId);
+                    //jedis.del("Task"+type+"#"+requestId);
                     break;
                 }
                 res.append(line);
+            }
+            
+            if(isFinished){
+                jedis.del("TaskRunning#"+requestId);
+            }else if(res.length()==0){
+                String running = jedis.get("TaskRunning#"+requestId);
+                if(running==null){
+                    isFinished = true;
+                }
             }
         }
         

@@ -31,6 +31,7 @@ import main.java.core.Task;
 import main.java.multithreading.SimEngine;
 import main.java.util.RandomUtil;
 import main.java.util.ServletUtil;
+import redis.clients.jedis.Jedis;
 
 @WebServlet(urlPatterns="/ReceiveSimRequest")
 @MultipartConfig
@@ -139,6 +140,10 @@ public class ReceiveSimRequest extends HttpServlet{
             
             jo.addProperty("status", "success");
             jo.addProperty("requestId", requestId);
+            
+            try(Jedis cache = new Jedis()){
+                cache.set("TaskRunning#"+requestId, "true");
+            }
         }
         
         ServletUtil.returnJsonResult(resp, jo);
