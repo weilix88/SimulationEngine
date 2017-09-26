@@ -8,6 +8,8 @@ import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.io.OutputStreamWriter;
+import java.net.URI;
+import java.net.URISyntaxException;
 
 import org.apache.commons.io.FileUtils;
 import org.slf4j.Logger;
@@ -85,12 +87,16 @@ public class TaskRunner implements Runnable {
         String country = weatherFile.split("_")[0];
         String state = weatherFile.split("_")[1];
         
-        File src = new File(EngineConfig.readProperty("WeatherFilesBasePath")+country+"\\"+state+"\\"+weatherFile+".epw");
-        File dest = new File(idfPath+"\\weatherfile.epw");
         try {
+            URI uri = new URI("file:///"+EngineConfig.readProperty("WeatherFilesBasePath")+country+"/"+state+"/"+weatherFile+".epw");
+            File src = new File(uri);
+            File dest = new File(idfPath+"\\weatherfile.epw");
+        
             FileUtils.copyFile(src, dest);
             return idfPath+"\\weatherfile.epw";
         } catch (IOException e) {
+            LOG.error(e.getMessage(), e);
+        } catch (URISyntaxException e) {
             LOG.error(e.getMessage(), e);
         }
         return null;

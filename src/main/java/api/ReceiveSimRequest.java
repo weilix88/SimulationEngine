@@ -49,6 +49,8 @@ public class ReceiveSimRequest extends HttpServlet{
     protected void doPost(HttpServletRequest req, HttpServletResponse resp) throws ServletException, IOException {
         LOG.info("Sim request receiver receives request");
         
+        req.setCharacterEncoding("utf-8");
+        
         String version = null;
         String weatherFile = null;
         String commitId = null;
