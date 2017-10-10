@@ -67,7 +67,7 @@ public class ReceiveSimRequest extends HttpServlet{
             folder.mkdirs();
         }
         
-        LOG.info("Sim request receiver built working directory");
+        LOG.info("Sim request receiver built working directory: "+simBasePath+newFolder);
         
         for(Part part : req.getParts()){
             String fieldName = part.getName();
@@ -134,7 +134,7 @@ public class ReceiveSimRequest extends HttpServlet{
             task.enqueue();
             task.update();
             
-            LOG.info("Sim request receiver put task equeue "+requestId);
+            LOG.info("Sim request receiver put task enqueue "+requestId);
             
             SimEngine.wakeSimEngine();
             
