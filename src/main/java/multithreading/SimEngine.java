@@ -6,10 +6,13 @@ import java.util.concurrent.ThreadPoolExecutor;
 import com.google.gson.Gson;
 
 import main.java.core.Task;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import redis.clients.jedis.Jedis;
+import redis.clients.jedis.exceptions.JedisConnectionException;
 
 public class SimEngine implements Runnable{
-    //private final static Logger LOG = LoggerFactory.getLogger(SimEngine.class);
+    private final static Logger LOG = LoggerFactory.getLogger(SimEngine.class);
     
     private static SimEngine engine = null;
     private static ThreadPoolExecutor executor = null;
@@ -60,7 +63,12 @@ public class SimEngine implements Runnable{
             String jsonInString = null;
             try(Jedis jedis = new Jedis("localhost")){
                 jsonInString = jedis.rpop("TaskQueue");
-                jedis.quit();
+
+                try {
+                    jedis.quit();
+                }catch(JedisConnectionException e){
+                    LOG.error(e.getMessage(), e);
+                }
             }
             if (jsonInString != null) {
                 Task task = gson.fromJson(jsonInString, Task.class);
