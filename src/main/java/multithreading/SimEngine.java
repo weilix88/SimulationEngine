@@ -1,10 +1,15 @@
 package main.java.multithreading;
 
+import java.io.IOException;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ThreadPoolExecutor;
 
 import com.google.gson.Gson;
 
+import com.google.gson.JsonObject;
+import com.google.gson.JsonParser;
+import main.java.aws.redis.RedisAccess;
+import main.java.aws.redis.RedisAccessFactory;
 import main.java.core.Task;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -53,27 +58,25 @@ public class SimEngine implements Runnable{
 
     @Override
     public synchronized void run() {
-        Gson gson = new Gson();
-        
+        //Gson gson = new Gson();
+        JsonParser jp = new JsonParser();
+
         while(true){
             if(executor.isShutdown()){
                 break;
             }
             
             String jsonInString = null;
-            try(Jedis jedis = new Jedis("localhost")){
-                jsonInString = jedis.rpop("TaskQueue");
-
-                try {
-                    jedis.quit();
-                }catch(JedisConnectionException e){
-                    LOG.error(e.getMessage(), e);
-                }
+            try(RedisAccess access = RedisAccessFactory.getAccess()){
+                jsonInString = access.rpop("TaskQueue");
+            }catch (IOException e){
+                LOG.error(e.getMessage(), e);
             }
+
             if (jsonInString != null) {
-                Task task = gson.fromJson(jsonInString, Task.class);
-                
-                executor.execute(new TaskRunner(task));
+                //Task task = gson.fromJson(jsonInString, Task.class);
+                JsonObject jo = jp.parse(jsonInString).getAsJsonObject();
+                executor.execute(new TaskRunner(jo));
             }else {
                 try {
                     this.wait();
