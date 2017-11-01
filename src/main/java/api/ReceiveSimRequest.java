@@ -1,13 +1,6 @@
 package main.java.api;
 
-import java.io.File;
-import java.io.FileOutputStream;
 import java.io.IOException;
-import java.io.InputStream;
-import java.text.DateFormat;
-import java.text.SimpleDateFormat;
-import java.util.Date;
-import java.util.UUID;
 
 import javax.servlet.ServletException;
 import javax.servlet.annotation.MultipartConfig;
@@ -15,23 +8,11 @@ import javax.servlet.annotation.WebServlet;
 import javax.servlet.http.HttpServlet;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
-import javax.servlet.http.Part;
 
-import org.apache.commons.io.FileUtils;
-import org.apache.commons.io.IOUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import com.google.gson.JsonArray;
-import com.google.gson.JsonObject;
-import com.google.gson.JsonParser;
-
-import main.java.config.EngineConfig;
-import main.java.core.Task;
 import main.java.multithreading.SimEngine;
-import main.java.util.RandomUtil;
-import main.java.util.ServletUtil;
-import redis.clients.jedis.Jedis;
 
 @WebServlet(urlPatterns="/ReceiveSimRequest")
 @MultipartConfig
@@ -47,10 +28,9 @@ public class ReceiveSimRequest extends HttpServlet{
 
     @Override
     protected void doPost(HttpServletRequest req, HttpServletResponse resp) throws ServletException, IOException {
+    	LOG.info("Sim request receiver receives request");
         SimEngine.wakeSimEngine();
-        /*LOG.info("Sim request receiver receives request");
-        
-        req.setCharacterEncoding("utf-8");
+        /*req.setCharacterEncoding("utf-8");
         
         String version = null;
         String weatherFile = null;

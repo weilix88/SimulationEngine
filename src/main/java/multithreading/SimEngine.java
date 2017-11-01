@@ -4,17 +4,14 @@ import java.io.IOException;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ThreadPoolExecutor;
 
-import com.google.gson.Gson;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
+
 import main.java.aws.redis.RedisAccess;
 import main.java.aws.redis.RedisAccessFactory;
-import main.java.core.Task;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-import redis.clients.jedis.Jedis;
-import redis.clients.jedis.exceptions.JedisConnectionException;
 
 public class SimEngine implements Runnable{
     private final static Logger LOG = LoggerFactory.getLogger(SimEngine.class);

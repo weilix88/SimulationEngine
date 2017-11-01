@@ -10,6 +10,7 @@ import java.io.IOException;
 public class RedisAccess implements Closeable{
 	private JedisCommands commands;
 	private Closeable closeable;
+	private static int EXPIRE = 24*60*60;
 	
 	public RedisAccess(JedisCluster cluster){
 		this.commands = cluster;
@@ -27,7 +28,7 @@ public class RedisAccess implements Closeable{
 	}
 
 	public String set(String key, String value){
-		return commands.set(key, value);
+		return commands.setex(key, EXPIRE, value);
 	}
 	
 	public String get(String key){
@@ -44,5 +45,9 @@ public class RedisAccess implements Closeable{
 
 	public String rpop(String key){
 		return commands.rpop(key);
+	}
+	
+	public Long expire(String key) {
+		return commands.expire(key, EXPIRE);
 	}
 }

@@ -1,46 +1,51 @@
 package main.java.multithreading;
 
-import java.io.*;
+import java.io.BufferedReader;
+import java.io.BufferedWriter;
+import java.io.File;
+import java.io.FileInputStream;
+import java.io.FileOutputStream;
+import java.io.FileWriter;
+import java.io.IOException;
+import java.io.InputStreamReader;
+import java.io.OutputStreamWriter;
 import java.net.URI;
 import java.net.URISyntaxException;
 
-import com.google.gson.JsonObject;
-import main.java.aws.redis.RedisAccess;
-import main.java.aws.redis.RedisAccessFactory;
-import main.java.util.RandomUtil;
 import org.apache.commons.io.FileUtils;
-import org.apache.commons.io.IOUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import com.google.gson.JsonArray;
+import com.google.gson.JsonObject;
 
 import main.java.aws.meta.PathUtil;
+import main.java.aws.redis.RedisAccess;
+import main.java.aws.redis.RedisAccessFactory;
 import main.java.aws.s3.S3FileDownloader;
 import main.java.config.EngineConfig;
-import main.java.core.Task;
-import redis.clients.jedis.Jedis;
+import main.java.util.RandomUtil;
 
 public class TaskRunner implements Runnable {
     private final Logger LOG = LoggerFactory.getLogger(TaskRunner.class);
     
-    private Task task;
+    //private Task task;
     //private Jedis jedis;
 
     private JsonObject jo;
     private RedisAccess access;
 
-    public TaskRunner(Task task) {
+    /*public TaskRunner(Task task) {
         this.task = task;
-    }
+    }*/
 
     public TaskRunner(JsonObject jo){
         this.jo = jo;
     }
 
-    public Task getTask() {
+    /*public Task getTask() {
         return this.task;
-    }
+    }*/
     
     private String getEnergyPlusPath(String version){
         return EngineConfig.readProperty("EnergyPlusBasePath")+"EnergyPlusV"+version.replaceAll("\\.", "-")+"-0\\";
@@ -212,6 +217,10 @@ public class TaskRunner implements Runnable {
             BufferedReader stdInput = null;
             BufferedReader stdError = null;
             try{
+            	this.access = RedisAccessFactory.getAccess();
+            	access.rpush("TaskStatus#"+requestId, "Starting");
+            	access.expire("TaskStatus#"+requestId);
+            	
                 LOG.info("Task runner going to start simulation "+requestId);
                 Process pr = Runtime.getRuntime().exec(commandline, null, new File(path));
                 
@@ -219,7 +228,6 @@ public class TaskRunner implements Runnable {
                 stdError = new BufferedReader(new InputStreamReader(pr.getErrorStream()));
                 
                 //this.jedis = new Jedis("localhost");
-                this.access = RedisAccessFactory.getAccess();
 
                 // read the output from the command
                 String s;
@@ -229,7 +237,7 @@ public class TaskRunner implements Runnable {
                         continue;
                     }
                     
-                    access.rpush("TaskStatus#"+task.getRequestId(), s+"<br/>");
+                    access.rpush("TaskStatus#"+requestId, s+"<br/>");
                 }
 
                 // read any errors from the attempted command
@@ -243,26 +251,26 @@ public class TaskRunner implements Runnable {
                 }
                 access.rpush("TaskError#"+task.getRequestId(), "Error_FINISHED");*/
 
-                access.set("Taskhtml#"+task.getRequestId(), readTextFile(path+"IDFTable.html"));
-                access.set("Taskerr#"+task.getRequestId(), readTextFile(path+"IDF.err"));
-                access.set("Taskcsv#"+task.getRequestId(), readTextFile(path+"IDF.csv"));
+                access.set("Taskhtml#"+requestId, readTextFile(path+"IDFTable.html"));
+                access.set("Taskerr#"+requestId, readTextFile(path+"IDF.err"));
+                access.set("Taskcsv#"+requestId, readTextFile(path+"IDF.csv"));
 
-                access.rpush("TaskStatus#"+task.getRequestId(), "Status_FINISHED");
+                access.rpush("TaskStatus#"+requestId, "Status_FINISHED");
                 
                 
                 FileUtils.deleteDirectory(new File(path));
                 
                 //TODO delete old keys, in case client failed to request status or output file
                 
-                LOG.info("Task runner simulation finished "+task.getRequestId()+", path: "+path);
+                LOG.info("Task runner simulation finished "+requestId+", path: "+path);
             } catch (IOException e) {
                 LOG.error(e.getMessage(), e);
             } finally {
                 //this.jedis.quit();
                 //this.jedis.close();
-                /*try {
+                try {
                     this.access.close();
-                } catch (IOException e) {}*/
+                } catch (IOException e) {}
 
                 if(stdInput!=null){
                     try {
