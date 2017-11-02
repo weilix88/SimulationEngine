@@ -13,7 +13,7 @@ public class RedisCleaner implements ServletContextListener{
     
     @Override
     public void contextDestroyed(ServletContextEvent arg0) {
-        try(Jedis jedis = new Jedis("localhost")){
+        /*try(Jedis jedis = new Jedis("localhost")){
             jedis.flushAll();
         }
         LOG.info("On servlet context destroyed, flush Redis.");
@@ -27,7 +27,7 @@ public class RedisCleaner implements ServletContextListener{
                 Thread.sleep(1000);
             } catch (InterruptedException e) {}
         }
-        LOG.info("On servlet context destroyed, shut down simulation engine");
+        LOG.info("On servlet context destroyed, shut down simulation engine");*/
     }
 
     @Override
