@@ -7,6 +7,7 @@ import java.io.PrintWriter;
 
 import javax.servlet.http.HttpServletResponse;
 
+import com.google.gson.JsonElement;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -15,7 +16,7 @@ import com.google.gson.JsonObject;
 public class ServletUtil {
     private static final Logger LOG = LoggerFactory.getLogger(ServletUtil.class);
     
-    public static void returnJsonResult(HttpServletResponse resp, JsonObject jo){
+    public static void returnJsonResult(HttpServletResponse resp, JsonElement jo){
         resp.setCharacterEncoding("utf-8");
         resp.setContentType("json");
         try (PrintWriter pw = resp.getWriter()){

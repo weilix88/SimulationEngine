@@ -12,6 +12,7 @@ import java.io.OutputStreamWriter;
 import java.net.URI;
 import java.net.URISyntaxException;
 
+import main.java.aws.meta.InstanceInfo;
 import org.apache.commons.io.FileUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -141,7 +142,7 @@ public class TaskRunner implements Runnable {
         }
         
         StringBuilder sb = new StringBuilder();
-        String line = null;
+        String line;
         try(FileInputStream fis = new FileInputStream(f);
                 InputStreamReader isr = new InputStreamReader(fis, "UTF-8");
                 BufferedReader br = new BufferedReader(isr)){
@@ -215,60 +216,78 @@ public class TaskRunner implements Runnable {
             String[] commandline = {batchPath, path+"IDF", "weatherfile"};
             
             BufferedReader stdInput = null;
-            BufferedReader stdError = null;
             try{
             	this.access = RedisAccessFactory.getAccess();
             	access.rpush("TaskStatus#"+requestId, "Starting");
             	access.expire("TaskStatus#"+requestId);
-            	
+
+                access.set("TaskServerIP#"+requestId, InstanceInfo.getPublicIP());
+                LOG.info("Simulation server public IP: "+InstanceInfo.getPublicIP());
+
                 LOG.info("Task runner going to start simulation "+requestId);
-                Process pr = Runtime.getRuntime().exec(commandline, null, new File(path));
-                
-                stdInput = new BufferedReader(new InputStreamReader(pr.getInputStream()));
-                stdError = new BufferedReader(new InputStreamReader(pr.getErrorStream()));
-                
-                //this.jedis = new Jedis("localhost");
 
-                // read the output from the command
-                String s;
-                while ((s = stdInput.readLine()) != null) {
-                    //LOG.info(s);
-                    if(s.contains(path) || s.contains(energyPlusPath)){
-                        continue;
-                    }
-                    
-                    access.rpush("TaskStatus#"+requestId, s+"<br/>");
+                // SimulationManager will start simulation and collect PID one by one
+                StartSimulationWrapper wrapper = SimulationManager.INSTANCE.startSimulation(requestId, commandline, path);
+
+                if(wrapper.pid==null){
+                    LOG.error("No process id captured for "+requestId);
                 }
 
-                // read any errors from the attempted command
-                /*while ((s = stdError.readLine()) != null) {
-                    //System.err.println(s);
-                    if(s.contains(path) || s.contains(energyPlusPath)){
-                        continue;
+                LOG.info("Continue simulation "+requestId);
+                stdInput = wrapper.stdInput;
+                if(stdInput!=null){
+                    // read the output from the command
+                    String s;
+                    while ((s = stdInput.readLine()) != null) {
+                        if(s.contains(path) || s.contains(energyPlusPath)){
+                            continue;
+                        }
+
+                        access.rpush("TaskStatus#"+requestId, s+"<br/>");
                     }
 
-                    access.rpush("TaskError#"+task.getRequestId(), s+"<br/>");
+                    String tryCancelled = access.get("TaskCancelled#"+requestId);
+                    if(tryCancelled!=null && tryCancelled.equalsIgnoreCase("true")){
+                        LOG.info("TaskRunner detected simulation cancellation: "+requestId);
+
+                        access.del("TaskCancelled#"+requestId);
+
+                        access.set("Taskhtml#"+requestId, "");
+                        access.set("Taskerr#"+requestId, "");
+                        access.set("Taskcsv#"+requestId, "");
+                        access.set("Taskeso#"+requestId, "");
+                    }else {
+                        access.set("Taskhtml#"+requestId, readTextFile(path+"IDFTable.html"));
+                        access.set("Taskerr#"+requestId, readTextFile(path+"IDF.err"));
+                        access.set("Taskcsv#"+requestId, readTextFile(path+"IDF.csv"));
+                        access.set("Taskeso#"+requestId, readTextFile(path+"IDF.eso"));
+                    }
+
+                    access.rpush("TaskStatus#"+requestId, "Status_FINISHED");
+                    access.del("TaskServerIP#"+requestId);
+
+                    FileUtils.deleteDirectory(new File(path));
+
+                    LOG.info("Task runner simulation finished "+requestId+", path: "+path);
+                }else {
+                    access.rpush("TaskStatus#"+requestId, "Status_ERROR");
+                    access.rpush("TaskErrorMessage#"+requestId, "Simulation output stream not captured");
+
+                    LOG.error("Simulation output stream not captured for "+requestId);
                 }
-                access.rpush("TaskError#"+task.getRequestId(), "Error_FINISHED");*/
 
-                access.set("Taskhtml#"+requestId, readTextFile(path+"IDFTable.html"));
-                access.set("Taskerr#"+requestId, readTextFile(path+"IDF.err"));
-                access.set("Taskcsv#"+requestId, readTextFile(path+"IDF.csv"));
-                access.set("Taskeso#"+requestId, readTextFile(path+"IDF.eso"));
+                /**
+                 * clean up request id, PID records
+                 */
+                SimulationManager.INSTANCE.finishSimulation(requestId);
 
-                access.rpush("TaskStatus#"+requestId, "Status_FINISHED");
-                
-                
-                FileUtils.deleteDirectory(new File(path));
-                
-                //TODO delete old keys, in case client failed to request status or output file
-                
-                LOG.info("Task runner simulation finished "+requestId+", path: "+path);
+                /**
+                 * try to run next simulation
+                 */
+                SimEngine.wakeSimEngine();
             } catch (IOException e) {
                 LOG.error(e.getMessage(), e);
             } finally {
-                //this.jedis.quit();
-                //this.jedis.close();
                 try {
                     this.access.close();
                 } catch (IOException e) {}
@@ -276,11 +295,6 @@ public class TaskRunner implements Runnable {
                 if(stdInput!=null){
                     try {
                         stdInput.close();
-                    } catch (IOException e) {}
-                }
-                if(stdError!=null){
-                    try {
-                        stdError.close();
                     } catch (IOException e) {}
                 }
             }

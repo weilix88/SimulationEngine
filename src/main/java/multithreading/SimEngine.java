@@ -55,29 +55,42 @@ public class SimEngine implements Runnable{
 
     @Override
     public synchronized void run() {
-        //Gson gson = new Gson();
         JsonParser jp = new JsonParser();
 
         while(true){
             if(executor.isShutdown()){
                 break;
             }
-            
+
+            /**
+             * If there are too many simulations running, ignore this request/wake up
+             */
+            int runningSimulations = SimulationManager.INSTANCE.getRunningSimulation();
+            if(runningSimulations>6){
+                try {
+                    this.wait();
+                } catch (InterruptedException e) {}
+                continue;
+            }
+
             String jsonInString = null;
             try(RedisAccess access = RedisAccessFactory.getAccess()){
                 jsonInString = access.rpop("TaskQueue");
+                System.out.println("Read from task queue: "+jsonInString);
             }catch (IOException e){
                 LOG.error(e.getMessage(), e);
             }
 
             if (jsonInString != null) {
-                //Task task = gson.fromJson(jsonInString, Task.class);
                 JsonObject jo = jp.parse(jsonInString).getAsJsonObject();
+
+                // run simulation
                 executor.execute(new TaskRunner(jo));
             }else {
                 try {
                     this.wait();
                 } catch (InterruptedException e) {}
+                continue;
             }
         }
         
