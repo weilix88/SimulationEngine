@@ -12,6 +12,7 @@ import java.io.OutputStreamWriter;
 import java.net.URI;
 import java.net.URISyntaxException;
 
+import main.java.aws.meta.GlobalConstant;
 import main.java.aws.meta.InstanceInfo;
 import org.apache.commons.io.FileUtils;
 import org.slf4j.Logger;
@@ -98,8 +99,17 @@ public class TaskRunner implements Runnable {
         String state = weatherFile.split("_")[1];
         
         try {
-            URI uri = new URI("file:///"+EngineConfig.readProperty("WeatherFilesBasePath")+country+"/"+state+"/"+weatherFile+".epw");
-            File src = new File(uri);
+            File src = null;
+            String platform = EngineConfig.readProperty("platform");
+            if(platform.equalsIgnoreCase("aws")){
+                String path = country+"/"+state+"/";
+                S3FileDownloader s3FileDownloader = new S3FileDownloader(null);
+                src = s3FileDownloader.download(GlobalConstant.WEATHER_FILE_BUCKET, path, weatherFile+".epw");
+            }else {
+                URI uri = new URI("file:///"+EngineConfig.readProperty("WeatherFilesBasePath")+country+"/"+state+"/"+weatherFile+".epw");
+                src = new File(uri);
+            }
+
             File dest = new File(idfPath+"\\weatherfile.epw");
         
             FileUtils.copyFile(src, dest);
