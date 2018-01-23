@@ -266,11 +266,13 @@ public class TaskRunner implements Runnable {
                         access.set("Taskerr#"+requestId, "");
                         access.set("Taskcsv#"+requestId, "");
                         access.set("Taskeso#"+requestId, "");
+                        access.set("Taskmtr#"+requestId, "");
                     }else {
                         access.set("Taskhtml#"+requestId, readTextFile(path+"IDFTable.html"));
                         access.set("Taskerr#"+requestId, readTextFile(path+"IDF.err"));
                         access.set("Taskcsv#"+requestId, readTextFile(path+"IDF.csv"));
                         access.set("Taskeso#"+requestId, readTextFile(path+"IDF.eso"));
+                        access.set("Taskmtr#"+requestId, readTextFile(path+"IDF.mtr"));
                     }
 
                     access.rpush("TaskStatus#"+requestId, "Status_FINISHED");
