@@ -11,10 +11,17 @@ import java.io.InputStreamReader;
 import java.io.OutputStreamWriter;
 import java.net.URI;
 import java.net.URISyntaxException;
+import java.util.Base64;
+import java.util.Iterator;
 
 import main.java.aws.meta.GlobalConstant;
 import main.java.aws.meta.InstanceInfo;
+import main.java.util.FileUtil;
 import org.apache.commons.io.FileUtils;
+import org.jsoup.Jsoup;
+import org.jsoup.nodes.Document;
+import org.jsoup.nodes.Element;
+import org.jsoup.select.Elements;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -27,6 +34,8 @@ import main.java.aws.redis.RedisAccessFactory;
 import main.java.aws.s3.S3FileDownloader;
 import main.java.config.EngineConfig;
 import main.java.util.RandomUtil;
+
+import static main.java.util.FileUtil.TAG;
 
 public class TaskRunner implements Runnable {
     private final Logger LOG = LoggerFactory.getLogger(TaskRunner.class);
@@ -143,41 +152,10 @@ public class TaskRunner implements Runnable {
         }
     }
     
-    private String readTextFile(String path){
-        //LOG.info(path);
-        
-        File f = new File(path);
-        if(!f.exists()){
-            return "";
-        }
-        
-        StringBuilder sb = new StringBuilder();
-        String line;
-        try(FileInputStream fis = new FileInputStream(f);
-                InputStreamReader isr = new InputStreamReader(fis, "UTF-8");
-                BufferedReader br = new BufferedReader(isr)){
-            while((line=br.readLine()) != null){
-                sb.append(line).append(System.lineSeparator());
-            }
-        }catch(IOException e){
-            LOG.error(e.getMessage(), e);
-            sb.append("Encounter Error While Retrieving Content: "+e.getMessage()+System.lineSeparator());
-        }
-        return sb.toString();
-    }
+
 
     @Override
     public void run() {
-        /*LOG.info("Task runner starts to run "+task.getRequestId());
-        
-        String path = task.getIdfFilePath();
-        String version = task.getVersion();
-        String weatherFile = task.getWeatherFile();
-        String energyPlusPath = getEnergyPlusPath(version);
-        
-        String batchPath = createEnergyPlusBatchFile(version, path, energyPlusPath);
-        LOG.info("Task runner copied batch file "+task.getRequestId());*/
-
         LOG.info("Task runner starts to run "+jo.get("request_id").getAsString());
 
         /** read data */
@@ -268,11 +246,53 @@ public class TaskRunner implements Runnable {
                         access.set("Taskeso#"+requestId, "");
                         access.set("Taskmtr#"+requestId, "");
                     }else {
-                        access.set("Taskhtml#"+requestId, readTextFile(path+"IDFTable.html"));
-                        access.set("Taskerr#"+requestId, readTextFile(path+"IDF.err"));
-                        access.set("Taskcsv#"+requestId, readTextFile(path+"IDF.csv"));
-                        access.set("Taskeso#"+requestId, readTextFile(path+"IDF.eso"));
-                        access.set("Taskmtr#"+requestId, readTextFile(path+"IDF.mtr"));
+                        String html = FileUtil.readTextFile(path+"IDFTable.html");
+                        if(html!=null && !html.isEmpty()){
+                            Document htmlDoc = Jsoup.parse(html);
+                            FileUtil.processHTML(htmlDoc);
+
+                            // try to extract EUI value and unit
+                            String tableId = "AnnualBuildingUtilityPerformanceSummary:EntireFacility:SiteandSourceEnergy";
+                            String firstCellContent = "Net Site Energy";
+                            String columnTitle = "Energy Per Total Building Area";
+
+                            Element table = null;
+                            Elements tables = htmlDoc.getElementsByAttributeValue(TAG, tableId);
+                            if(tables.size()>0){
+                                table = tables.get(0);
+                            }
+                            if(table!=null){
+                                Elements rows = table.select("tr");
+                                JsonObject info = extractHeaderInfo(columnTitle, rows.get(0));
+
+                                if(info!=null){
+                                    int idx = info.get("idx").getAsInt();
+                                    String value = readValueFromTable(firstCellContent, idx, rows);
+
+                                    if(value!=null){
+                                        String unit = info.get("unit").getAsString();
+
+                                        //TODO save to redis
+                                        access.set("Taskeui_unit#"+requestId, unit);
+                                        access.set("Taskeui_value#"+requestId, value);
+                                    }
+                                }
+                            }
+
+                            if(html==null || html.isEmpty()){
+                                access.set("Taskhtml#"+requestId, "");
+                            }else {
+                                String processedHTML = htmlDoc.outerHtml();
+                                byte[] compressed = FileUtil.compressString(processedHTML);
+                                String base64Encoded = Base64.getEncoder().encodeToString(compressed);
+                                access.set("Taskhtml#" + requestId, base64Encoded);
+                            }
+                        }
+
+                        access.set("Taskerr#"+requestId, readCompressedBase64String(path+"IDF.err"));
+                        access.set("Taskcsv#"+requestId, readCompressedBase64String(path+"IDF.csv"));
+                        access.set("Taskeso#"+requestId, readCompressedBase64String(path+"IDF.eso"));
+                        access.set("Taskmtr#"+requestId, readCompressedBase64String(path+"IDF.mtr"));
                     }
 
                     access.rpush("TaskStatus#"+requestId, "Status_FINISHED");
@@ -311,6 +331,58 @@ public class TaskRunner implements Runnable {
                 }
             }
         }
+    }
+
+    private String readValueFromTable(String firstCellContent, int columnIdx, Elements rows){
+        Iterator<Element> rowIter = rows.iterator();
+        rowIter.next();  //skip header
+
+        while(rowIter.hasNext()){
+            Elements tds = rowIter.next().select("td");
+
+            if(tds.get(0).ownText().trim().equalsIgnoreCase(firstCellContent)){
+                return tds.get(columnIdx).ownText();
+            }
+        }
+
+        return null;
+    }
+
+    private JsonObject extractHeaderInfo(String columnTitle, Element header){
+        JsonObject jo = new JsonObject();
+
+        Elements tds = header.select("td");
+
+        int idx=0;
+
+        Iterator<Element> tdIter = tds.iterator();
+        String target = columnTitle+" [";
+        while(tdIter.hasNext()){
+            Element td = tdIter.next();
+            String content = td.ownText();
+            if(content.startsWith(target)){
+                jo.addProperty("unit", content.substring(content.indexOf("[")+1, content.indexOf("]")));
+                jo.addProperty("idx", idx);
+
+                return jo;
+            }
+
+            idx++;
+        }
+
+        return null;
+    }
+
+    private String readCompressedBase64String(String path){
+        String result;
+        while((result = FileUtil.readBase64CompressedString(path)) == null){
+            try {
+                Thread.sleep(RandomUtil.getRandom(5*60*1000));  //sleep at most 5 minutes and try again
+            } catch (InterruptedException e) {
+                e.printStackTrace();
+            }
+        }
+        return result;
     }
 }
 

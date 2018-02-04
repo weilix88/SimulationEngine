@@ -3,6 +3,7 @@ package main.java.util;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.util.Random;
+import java.util.concurrent.ThreadLocalRandom;
 
 public class RandomUtil {
     private final static Random RAND = new Random(System.currentTimeMillis());
@@ -26,6 +27,10 @@ public class RandomUtil {
             hexString.append(str);
         }
         return hexString.toString();
+    }
+
+    public static long getRandom(long max){
+        return ThreadLocalRandom.current().nextLong(max);
     }
     
     public static String genRandomStr(){

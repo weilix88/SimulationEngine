@@ -1,9 +1,11 @@
 package main.java.multithreading;
 
 import java.io.IOException;
+import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ThreadPoolExecutor;
 
+import main.java.daemon.Monitor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -16,8 +18,11 @@ import main.java.aws.redis.RedisAccessFactory;
 public class SimEngine implements Runnable{
     private final static Logger LOG = LoggerFactory.getLogger(SimEngine.class);
     
-    private static SimEngine engine = null;
+    private static volatile SimEngine engine = null;
     private static ThreadPoolExecutor executor = null;
+
+    private static volatile Monitor monitor = null;
+    private static ExecutorService singleExecutor = null;
     
     public static void wakeSimEngine(){
         if(engine==null){
@@ -32,6 +37,16 @@ public class SimEngine implements Runnable{
             }
         }else {
             engine.sendNotification();
+        }
+
+        if(monitor==null){
+            synchronized(SimEngine.class){
+                if(monitor==null){
+                    monitor = new Monitor();
+                    singleExecutor = Executors.newSingleThreadExecutor();
+                    singleExecutor.execute(monitor);
+                }
+            }
         }
     }
     

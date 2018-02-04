@@ -15,6 +15,7 @@ import java.net.URL;
 
 public class InstanceInfo {
     private static volatile String publicIP = "";
+    private static volatile String instanceID = "";
 
     public static String getPublicIP(){
         String platform = EngineConfig.readProperty("platform");
@@ -33,7 +34,28 @@ public class InstanceInfo {
         return publicIP;
     }
 
+    public static String getInstanceID(){
+        String platform = EngineConfig.readProperty("platform");
+        if(platform.equalsIgnoreCase("aws")) {
+            if (instanceID.isEmpty()) {
+                synchronized (InstanceInfo.class) {
+                    if (instanceID.isEmpty()) {
+                        instanceID = queryInstanceId();
+                    }
+                }
+            }
+        }else {
+            instanceID = "1";
+        }
+
+        return instanceID;
+    }
+
     private static String queryPublicIP(){
-        return NetworkRequester.get("http://"+ EngineConfig.readProperty("publicIPQuery"));
+        return NetworkRequester.get("http://"+ EngineConfig.readProperty("metaDataQuery")+"public-ipv4");
+    }
+
+    private static String queryInstanceId(){
+        return NetworkRequester.get("http://"+ EngineConfig.readProperty("metaDataQuery")+"instance-id");
     }
 }

@@ -1,28 +1,22 @@
 package main.java.util;
 
-import java.io.BufferedWriter;
-import java.io.File;
-import java.io.FileInputStream;
-import java.io.FileOutputStream;
-import java.io.FileWriter;
-import java.io.IOException;
-import java.io.InputStream;
-import java.io.RandomAccessFile;
-import java.nio.channels.Channels;
-import java.nio.channels.FileChannel;
-import java.nio.channels.ReadableByteChannel;
+import java.io.*;
+import java.util.Base64;
+import java.util.Iterator;
+import java.util.zip.GZIPOutputStream;
 
-import org.apache.commons.io.IOUtils;
+import main.java.config.EngineConfig;
+import org.jsoup.nodes.Document;
+import org.jsoup.nodes.Element;
+import org.jsoup.select.Elements;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import main.java.config.EngineConfig;
-
 public class FileUtil {
     private static final Logger LOG = LoggerFactory.getLogger(FileUtil.class);
-    
+
     public static File createTempFile(String fileName){
-        File res = null;
+        File res;
         
         String tmpfolder = EngineConfig.readProperty("tmpfolder");
         String randomFolderPath = tmpfolder+"ISToFile_"+RandomUtil.genRandomStr()+"\\";
@@ -30,88 +24,109 @@ public class FileUtil {
         File randomFolder = new File(randomFolderPath);
         randomFolder.mkdir();
         
-        res = new File(randomFolderPath+fileName);
+        res = new SelfDestryoFile(randomFolderPath+fileName, true);
         res.deleteOnExit();
         
         return res;
     }
-    
-    public static File convertInputStreamToFile(InputStream is){
-        File res = createTempFile("ISToFile.tmp");
 
-        try(FileOutputStream out = new FileOutputStream(res)){
-            IOUtils.copy(is, out);
-        } catch (IOException e) {
-            LOG.error(e.getMessage(), e);
-        }
-        return res;
-    }
-    
-    public static File convertStringToFile(String str){
-        File res = createTempFile("StrToFile.tmp");
-        try(FileWriter fw = new FileWriter(res);
-                BufferedWriter bw = new BufferedWriter(fw)){
-            bw.write(str);
-            bw.flush();
-        } catch (IOException e) {
-            LOG.error(e.getMessage(), e);
-        }
-        return res;
-    }
-    
-    public static void writeStringToFile(String str, String path){
-        try(FileWriter fw = new FileWriter(path);
-                BufferedWriter bw = new BufferedWriter(fw)){
-            bw.write(str);
-            bw.flush();
-        }catch (IOException e){
-            LOG.error(e.getMessage(), e);
-        }
-    }
-    
-    public static boolean saveFileToPath(File file, String path){
-        try(                
-            RandomAccessFile raf = new RandomAccessFile(new File(path), "rw");
-            FileChannel fc = raf.getChannel();
-            
-            FileInputStream fis = new FileInputStream(file);
-            ReadableByteChannel rbc = Channels.newChannel(fis);
-        ){            
-            fc.transferFrom(rbc, 0, file.length());
-            return true;
-        } catch (IOException e) {
-            LOG.error(e.getMessage(), e);
-        }
-        
-        return false;
-    }
-    
-    /**
-     * suffix with heading dot
-     * @param s
-     * @param suffix
-     * @return
-     */
-    public static String makeFileName(String s, String suffix){
-        String fileName =  s.replaceAll("[:\\\\/*\"?|<>']", " ");
-        int suffixLen = suffix.length();
-        if(fileName.length()>255-suffixLen){
-            fileName = fileName.substring(0, 255-suffixLen);
-        }
-        return fileName+suffix;
-    }
-    
-    public static String getSuffix(String fileName){
-        if(fileName==null){
+    public static String readBase64CompressedString(String path){
+        try {
+            String content = readTextFile(path);
+            if(content.isEmpty()){
+                return "";
+            }
+            byte[] compressed = compressString(content);
+            return Base64.getEncoder().encodeToString(compressed);
+        } catch (Throwable throwable) {
+            LOG.error("convert file content to base64 compressed string failed: " + throwable.getMessage());
             return null;
         }
-        
-        fileName = fileName.toLowerCase();
-        int lastDot = fileName.lastIndexOf(".");
-        if(lastDot==-1){
-            return "NO_TYPE";
+    }
+
+    public static String readTextFile(String path){
+        File f = new File(path);
+        if(!f.exists()){
+            return "";
         }
-        
-        return fileName.substring(lastDot+1, fileName.length());
+
+        StringBuilder sb = new StringBuilder();
+        String line;
+        try(FileInputStream fis = new FileInputStream(f);
+            InputStreamReader isr = new InputStreamReader(fis, "UTF-8");
+            BufferedReader br = new BufferedReader(isr)){
+            while((line=br.readLine()) != null){
+                sb.append(line).append(System.lineSeparator());
+            }
+        }catch(IOException e){
+            LOG.error(e.getMessage(), e);
+            sb.append("Encounter Error While Retrieving Content: "+e.getMessage()+System.lineSeparator());
+        }
+        return sb.toString();
+    }
+
+    public static byte[] compressString(String raw){
+        if(raw==null){
+            return null;
+        }
+
+        byte[] compressed = null;
+        try(ByteArrayOutputStream bos = new ByteArrayOutputStream(raw.length())){
+            try(GZIPOutputStream gzippedOut = new GZIPOutputStream(bos)){
+                gzippedOut.write(raw.getBytes("utf-8"));
+                gzippedOut.flush();
+            }
+
+            compressed = bos.toByteArray();
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+
+        return compressed;
+    }
+
+    public final static String TAG = "tableid";
+    public final static String TYPE = "reportType";
+    public final static String NAME = "tableName";
+    public final static String REPORT = "reportName";
+    public final static String CAT = "reportCat";
+    public static void processHTML(Document rawHTMLDoc){
+        String reportName = "";
+        String reportFor = "";
+        String tableName = "";
+
+        Element body = rawHTMLDoc.body();
+        Elements all = body.children();
+        Iterator<Element> iter = all.iterator();
+        while(iter.hasNext()){
+            Element ele = iter.next();
+            String nodeName = ele.nodeName();
+
+            switch(nodeName){
+                case "p":
+                    String ownText = ele.ownText().trim();
+
+                    if(ownText.equals("Report:")){
+                        reportName = ele.select("b").text().trim().replaceAll("\\W", "");
+                    }else if(ownText.equals("For:")){
+                        reportFor = ele.select("b").text().trim().replaceAll("\\W", "");
+                    }
+                    break;
+                case "b":
+                    tableName = ele.text().trim().replaceAll("\\W", "");
+                    break;
+                case "table":
+                    String tableId = reportName+":"+reportFor+":"+tableName;
+                    ele.attr(TAG, tableId);
+                    ele.attr(TYPE, reportName+":" +reportFor);
+                    ele.attr(NAME, tableName);
+                    ele.attr(REPORT, reportName);
+                    ele.attr(CAT, reportFor);
+
+                    //we assume one table display at a time - utilities will give table a nice export feature
+                    ele.attr("class", "table table-striped table-bordered table-hover dataTables-utilities");
+                    break;
+            }
+        }
     }
 }

@@ -10,6 +10,7 @@ import java.io.IOException;
 import java.io.InputStreamReader;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.atomic.AtomicInteger;
 
 public enum SimulationManager {
     INSTANCE;
@@ -18,6 +19,8 @@ public enum SimulationManager {
     private static ConcurrentHashMap<String, String> existingPIDs = new ConcurrentHashMap<>();
 
     private final Logger LOG = LoggerFactory.getLogger(this.getClass());
+
+    private static volatile AtomicInteger counter = new AtomicInteger(0);
 
     public int getRunningSimulation(){
         return ProcessUtil.getPIDs().size();
@@ -57,6 +60,7 @@ public enum SimulationManager {
 
                                     pid = p;
                                     LOG.info("PID found "+pid);
+                                    counter.incrementAndGet();
                                     break reading;
                                 }
                             }
@@ -88,8 +92,13 @@ public enum SimulationManager {
             String pid = reqIdToPIDMap.remove(reqId);
             if(pid!=null){
                 existingPIDs.remove(pid);
+                counter.decrementAndGet();
             }
         }
+    }
+
+    public int getSimulationCounter(){
+        return counter.get();
     }
 
     public boolean cancelSimulation(String reqId){
@@ -98,6 +107,7 @@ public enum SimulationManager {
             if(pid!=null){
                 try {
                     Runtime.getRuntime().exec("taskkill /PID "+pid+" /F");
+                    counter.decrementAndGet();
                 } catch (IOException e) {}
 
                 existingPIDs.remove(pid);
