@@ -1,22 +1,16 @@
 package main.java.multithreading;
 
-import java.io.BufferedReader;
-import java.io.BufferedWriter;
-import java.io.File;
-import java.io.FileInputStream;
-import java.io.FileOutputStream;
-import java.io.FileWriter;
-import java.io.IOException;
-import java.io.InputStreamReader;
-import java.io.OutputStreamWriter;
-import java.net.URI;
-import java.net.URISyntaxException;
-import java.util.Base64;
-import java.util.Iterator;
-
+import com.google.gson.JsonArray;
+import com.google.gson.JsonObject;
 import main.java.aws.meta.GlobalConstant;
 import main.java.aws.meta.InstanceInfo;
+import main.java.aws.meta.PathUtil;
+import main.java.aws.redis.RedisAccess;
+import main.java.aws.redis.RedisAccessFactory;
+import main.java.aws.s3.S3FileDownloader;
+import main.java.config.EngineConfig;
 import main.java.util.FileUtil;
+import main.java.util.RandomUtil;
 import org.apache.commons.io.FileUtils;
 import org.jsoup.Jsoup;
 import org.jsoup.nodes.Document;
@@ -25,21 +19,17 @@ import org.jsoup.select.Elements;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import com.google.gson.JsonArray;
-import com.google.gson.JsonObject;
-
-import main.java.aws.meta.PathUtil;
-import main.java.aws.redis.RedisAccess;
-import main.java.aws.redis.RedisAccessFactory;
-import main.java.aws.s3.S3FileDownloader;
-import main.java.config.EngineConfig;
-import main.java.util.RandomUtil;
+import java.io.*;
+import java.net.URI;
+import java.net.URISyntaxException;
+import java.util.Base64;
+import java.util.Iterator;
 
 import static main.java.util.FileUtil.TAG;
 
 public class TaskRunner implements Runnable {
     private final Logger LOG = LoggerFactory.getLogger(TaskRunner.class);
-    
+
     //private Task task;
     //private Jedis jedis;
 
@@ -50,79 +40,80 @@ public class TaskRunner implements Runnable {
         this.task = task;
     }*/
 
-    public TaskRunner(JsonObject jo){
+    public TaskRunner(JsonObject jo) {
         this.jo = jo;
     }
 
     /*public Task getTask() {
         return this.task;
     }*/
-    
-    private String getEnergyPlusPath(String version){
-        return EngineConfig.readProperty("EnergyPlusBasePath")+"EnergyPlusV"+version.replaceAll("\\.", "-")+"-0\\";
+
+    private String getEnergyPlusPath(String version) {
+        return EngineConfig.readProperty("EnergyPlusBasePath") + "EnergyPlusV" + version.replaceAll("\\.", "-") + "-0\\";
     }
-    
+
     /**
      * Return created energy plus batch file path
+     *
      * @param version
      * @param targetFolder
      * @return
      */
-    private String createEnergyPlusBatchFile(String version, String targetFolder, String energyPlusPath){
+    private String createEnergyPlusBatchFile(String version, String targetFolder, String energyPlusPath) {
         String programPath = "set program_path=";
         String weatherPath = "set weather_path=";
-        
-        File batchFile = new File(energyPlusPath+"RunEPlus.bat");
-        File destFile = new File(targetFolder+"RunEPlus.bat");
-        
+
+        File batchFile = new File(energyPlusPath + "RunEPlus.bat");
+        File destFile = new File(targetFolder + "RunEPlus.bat");
+
         // reading file and write to the new file
         String line = null;
         String lineBreaker = System.lineSeparator();
-        try(FileInputStream fis = new FileInputStream(batchFile);
-                InputStreamReader isr = new InputStreamReader(fis, "UTF-8");
-                BufferedReader batchBR = new BufferedReader(isr);
-                
-                FileOutputStream fos = new FileOutputStream(destFile);
-                OutputStreamWriter osw = new OutputStreamWriter(fos, "UTF-8");
-                BufferedWriter destBW = new BufferedWriter(osw)){
-            while((line=batchBR.readLine()) != null){
-                if(line.contains(programPath)){
-                    destBW.write(programPath+energyPlusPath+lineBreaker);
-                }else if(line.contains(weatherPath)){
-                    destBW.write(weatherPath+targetFolder+lineBreaker);
-                }else {
-                    destBW.write(line+lineBreaker);
+        try (FileInputStream fis = new FileInputStream(batchFile);
+             InputStreamReader isr = new InputStreamReader(fis, "UTF-8");
+             BufferedReader batchBR = new BufferedReader(isr);
+
+             FileOutputStream fos = new FileOutputStream(destFile);
+             OutputStreamWriter osw = new OutputStreamWriter(fos, "UTF-8");
+             BufferedWriter destBW = new BufferedWriter(osw)) {
+            while ((line = batchBR.readLine()) != null) {
+                if (line.contains(programPath)) {
+                    destBW.write(programPath + energyPlusPath + lineBreaker);
+                } else if (line.contains(weatherPath)) {
+                    destBW.write(weatherPath + targetFolder + lineBreaker);
+                } else {
+                    destBW.write(line + lineBreaker);
                 }
             }
             destBW.flush();
-            
-            return targetFolder+"RunEPlus.bat";
-        }catch(IOException e){
+
+            return targetFolder + "RunEPlus.bat";
+        } catch (IOException e) {
             LOG.error(e.getMessage(), e);
         }
         return null;
     }
-    
-    private String copyWeatherFile(String weatherFile, String idfPath){
+
+    private String copyWeatherFile(String weatherFile, String idfPath) {
         String country = weatherFile.split("_")[0];
         String state = weatherFile.split("_")[1];
-        
+
         try {
             File src = null;
             String platform = EngineConfig.readProperty("platform");
-            if(platform.equalsIgnoreCase("aws")){
-                String path = country+"/"+state+"/";
+            if (platform.equalsIgnoreCase("aws")) {
+                String path = country + "/" + state + "/";
                 S3FileDownloader s3FileDownloader = new S3FileDownloader(null);
-                src = s3FileDownloader.download(GlobalConstant.WEATHER_FILE_BUCKET, path, weatherFile+".epw");
-            }else {
-                URI uri = new URI("file:///"+EngineConfig.readProperty("WeatherFilesBasePath")+country+"/"+state+"/"+weatherFile+".epw");
+                src = s3FileDownloader.download(GlobalConstant.WEATHER_FILE_BUCKET, path, weatherFile + ".epw");
+            } else {
+                URI uri = new URI("file:///" + EngineConfig.readProperty("WeatherFilesBasePath") + country + "/" + state + "/" + weatherFile + ".epw");
                 src = new File(uri);
             }
 
-            File dest = new File(idfPath+"\\weatherfile.epw");
-        
+            File dest = new File(idfPath + "\\weatherfile.epw");
+
             FileUtils.copyFile(src, dest);
-            return idfPath+"\\weatherfile.epw";
+            return idfPath + "\\weatherfile.epw";
         } catch (IOException e) {
             LOG.error(e.getMessage(), e);
         } catch (URISyntaxException e) {
@@ -130,19 +121,19 @@ public class TaskRunner implements Runnable {
         }
         return null;
     }
-    
-    private void downloadCSV(String idfPath, JsonArray csvs, String bucketName){
+
+    private void downloadCSV(String idfPath, JsonArray csvs, String bucketName) {
         //JsonArray ja = task.getCsvs();
-        if(csvs!=null && csvs.size()>0){
+        if (csvs != null && csvs.size() > 0) {
             //String bucketName = task.getS3Bucket();
-            String path = PathUtil.PROJECT_SCHEDULE+"/";
-            
+            String path = PathUtil.PROJECT_SCHEDULE + "/";
+
             S3FileDownloader downloader = new S3FileDownloader(null);
-            for(int i=0;i<csvs.size();i++){
+            for (int i = 0; i < csvs.size(); i++) {
                 String fileName = csvs.get(i).getAsString();
                 File csvFile = downloader.download(bucketName, path, fileName);
-                
-                File dest = new File(idfPath+"\\"+fileName);
+
+                File dest = new File(idfPath + "\\" + fileName);
                 try {
                     FileUtils.copyFile(csvFile, dest);
                 } catch (IOException e) {
@@ -151,12 +142,11 @@ public class TaskRunner implements Runnable {
             }
         }
     }
-    
 
 
     @Override
     public void run() {
-        LOG.info("Task runner starts to run "+jo.get("request_id").getAsString());
+        LOG.info("Task runner starts to run " + jo.get("request_id").getAsString());
 
         /** read data */
         String version = jo.get("version").getAsString();
@@ -167,87 +157,91 @@ public class TaskRunner implements Runnable {
         /** create work directory */
         String simBasePath = EngineConfig.readProperty("SimulationBasePath");
         String newFolder = RandomUtil.genRandomStr();
-        File folder = new File(simBasePath+newFolder);
-        if(folder.exists()){
+        File folder = new File(simBasePath + newFolder);
+        if (folder.exists()) {
             try {
                 FileUtils.cleanDirectory(folder);
             } catch (IOException e) {
                 LOG.error(e.getMessage(), e);
             }
-        }else {
+        } else {
             folder.mkdirs();
         }
-        LOG.info("Sim request receiver built working directory: "+simBasePath+newFolder);
+        LOG.info("Sim request receiver built working directory: " + simBasePath + newFolder);
 
-        /** create IDF file and write content to it */
-        File idfFile = new File(simBasePath+newFolder+"\\IDF.idf");
-        String idfContent = jo.get("idf_content").getAsString();
-        try(FileWriter fw = new FileWriter(idfFile);
-            BufferedWriter bw = new BufferedWriter(fw)){
-            bw.write(idfContent);
-            bw.flush();
-        }catch (IOException e) {
-            LOG.error(e.getMessage(), e);
-        }
-        LOG.info("Sim request receiver copied request IDF into working directory");
-
-        String path = simBasePath+newFolder+"\\";
+        String path = simBasePath + newFolder + "\\";
         String batchPath = createEnergyPlusBatchFile(version, path, energyPlusPath);
-        LOG.info("Task runner copied batch file "+requestId);
+        LOG.info("Task runner copied batch file " + requestId);
 
-        if(batchPath!=null && copyWeatherFile(weatherFile, path)!=null){
-            LOG.info("Task runner copied weather file "+requestId);
-            
+        if (batchPath != null && copyWeatherFile(weatherFile, path) != null) {
+            LOG.info("Task runner copied weather file " + requestId);
+
             downloadCSV(path, jo.get("csvs").getAsJsonArray(), jo.get("s3_bucket").getAsString());
-            LOG.info("Task runner downloaded CSV files "+requestId);
-            
-            String[] commandline = {batchPath, path+"IDF", "weatherfile"};
-            
+            LOG.info("Task runner downloaded CSV files " + requestId);
+
+            /** create IDF file and write content to it */
+            File idfFile = new File(simBasePath + newFolder + "\\IDF.idf");
+            String idfContent = jo.get("idf_content").getAsString();
+            try (FileWriter fw = new FileWriter(idfFile);
+                 BufferedWriter bw = new BufferedWriter(fw)) {
+                bw.write(idfContent);
+                bw.flush();
+            } catch (IOException e) {
+                LOG.error(e.getMessage(), e);
+            }
+            LOG.info("Sim request receiver copied request IDF into working directory");
+
+            /** create tmp file to save E+ output */
+            File eplusOutput = new File(simBasePath + newFolder + "\\EPlus.out");
+
+            String[] commandline = {batchPath, path + "IDF", "weatherfile"};
+
             BufferedReader stdInput = null;
-            try{
-            	this.access = RedisAccessFactory.getAccess();
-            	access.rpush("TaskStatus#"+requestId, "Starting");
-            	access.expire("TaskStatus#"+requestId);
+            try {
+                this.access = RedisAccessFactory.getAccess();
+                access.rpush("TaskStatus#" + requestId, "Starting");
+                access.expire("TaskStatus#" + requestId);
 
-                access.set("TaskServerIP#"+requestId, InstanceInfo.getPublicIP());
-                LOG.info("Simulation server public IP: "+InstanceInfo.getPublicIP());
+                access.set("TaskServerIP#" + requestId, InstanceInfo.getPublicIP());
+                LOG.info("Simulation server public IP: " + InstanceInfo.getPublicIP());
 
-                LOG.info("Task runner going to start simulation "+requestId);
+                LOG.info("Task runner going to start simulation " + requestId);
 
                 // SimulationManager will start simulation and collect PID one by one
                 StartSimulationWrapper wrapper = SimulationManager.INSTANCE.startSimulation(requestId, commandline, path);
 
-                if(wrapper.pid==null){
-                    LOG.error("No process id captured for "+requestId);
+                if (wrapper.pid == null) {
+                    LOG.error("No process id captured for " + requestId);
                 }
 
-                LOG.info("Continue simulation "+requestId);
+                LOG.info("Continue simulation " + requestId);
                 stdInput = wrapper.stdInput;
-                if(stdInput!=null){
+                if (stdInput != null) {
                     // read the output from the command
                     String s;
                     while ((s = stdInput.readLine()) != null) {
-                        if(s.contains(path) || s.contains(energyPlusPath)){
+                        if (s.contains(path) || s.contains(energyPlusPath)) {
                             continue;
                         }
 
-                        access.rpush("TaskStatus#"+requestId, s+"<br/>");
+                        access.rpush("TaskStatus#" + requestId, s + "<br/>");
+                        FileUtil.appendToFile(eplusOutput, System.currentTimeMillis()+" === "+s);
                     }
 
-                    String tryCancelled = access.get("TaskCancelled#"+requestId);
-                    if(tryCancelled!=null && tryCancelled.equalsIgnoreCase("true")){
-                        LOG.info("TaskRunner detected simulation cancellation: "+requestId);
+                    String tryCancelled = access.get("TaskCancelled#" + requestId);
+                    if (tryCancelled != null && tryCancelled.equalsIgnoreCase("true")) {
+                        LOG.info("TaskRunner detected simulation cancellation: " + requestId);
 
-                        access.del("TaskCancelled#"+requestId);
+                        access.del("TaskCancelled#" + requestId);
 
-                        access.set("Taskhtml#"+requestId, "");
-                        access.set("Taskerr#"+requestId, "");
-                        access.set("Taskcsv#"+requestId, "");
-                        access.set("Taskeso#"+requestId, "");
-                        access.set("Taskmtr#"+requestId, "");
-                    }else {
-                        String html = FileUtil.readTextFile(path+"IDFTable.html");
-                        if(html!=null && !html.isEmpty()){
+                        access.set("Taskhtml#" + requestId, "");
+                        access.set("Taskerr#" + requestId, "");
+                        access.set("Taskcsv#" + requestId, "");
+                        access.set("Taskeso#" + requestId, "");
+                        access.set("Taskmtr#" + requestId, "");
+                    } else {
+                        String html = FileUtil.readTextFile(path + "IDFTable.html");
+                        if (html != null && !html.isEmpty()) {
                             Document htmlDoc = Jsoup.parse(html);
                             FileUtil.processHTML(htmlDoc);
 
@@ -258,30 +252,30 @@ public class TaskRunner implements Runnable {
 
                             Element table = null;
                             Elements tables = htmlDoc.getElementsByAttributeValue(TAG, tableId);
-                            if(tables.size()>0){
+                            if (tables.size() > 0) {
                                 table = tables.get(0);
                             }
-                            if(table!=null){
+                            if (table != null) {
                                 Elements rows = table.select("tr");
                                 JsonObject info = extractHeaderInfo(columnTitle, rows.get(0));
 
-                                if(info!=null){
+                                if (info != null) {
                                     int idx = info.get("idx").getAsInt();
                                     String value = readValueFromTable(firstCellContent, idx, rows);
 
-                                    if(value!=null){
+                                    if (value != null) {
                                         String unit = info.get("unit").getAsString();
 
                                         //TODO save to redis
-                                        access.set("Taskeui_unit#"+requestId, unit);
-                                        access.set("Taskeui_value#"+requestId, value);
+                                        access.set("Taskeui_unit#" + requestId, unit);
+                                        access.set("Taskeui_value#" + requestId, value);
                                     }
                                 }
                             }
 
-                            if(html==null || html.isEmpty()){
-                                access.set("Taskhtml#"+requestId, "");
-                            }else {
+                            if (html == null || html.isEmpty()) {
+                                access.set("Taskhtml#" + requestId, "");
+                            } else {
                                 String processedHTML = htmlDoc.outerHtml();
                                 byte[] compressed = FileUtil.compressString(processedHTML);
                                 String base64Encoded = Base64.getEncoder().encodeToString(compressed);
@@ -289,23 +283,23 @@ public class TaskRunner implements Runnable {
                             }
                         }
 
-                        access.set("Taskerr#"+requestId, readCompressedBase64String(path+"IDF.err"));
-                        access.set("Taskcsv#"+requestId, readCompressedBase64String(path+"IDF.csv"));
-                        access.set("Taskeso#"+requestId, readCompressedBase64String(path+"IDF.eso"));
-                        access.set("Taskmtr#"+requestId, readCompressedBase64String(path+"IDF.mtr"));
+                        access.set("Taskerr#" + requestId, readCompressedBase64String(path + "IDF.err"));
+                        access.set("Taskcsv#" + requestId, readCompressedBase64String(path + "IDF.csv"));
+                        access.set("Taskeso#" + requestId, readCompressedBase64String(path + "IDF.eso"));
+                        access.set("Taskmtr#" + requestId, readCompressedBase64String(path + "IDF.mtr"));
                     }
 
-                    access.rpush("TaskStatus#"+requestId, "Status_FINISHED");
-                    access.del("TaskServerIP#"+requestId);
+                    access.rpush("TaskStatus#" + requestId, "Status_FINISHED");
+                    access.del("TaskServerIP#" + requestId);
 
                     FileUtils.deleteDirectory(new File(path));
 
-                    LOG.info("Task runner simulation finished "+requestId+", path: "+path);
-                }else {
-                    access.rpush("TaskStatus#"+requestId, "Status_ERROR");
-                    access.rpush("TaskErrorMessage#"+requestId, "Simulation output stream not captured");
+                    LOG.info("Task runner simulation finished " + requestId + ", path: " + path);
+                } else {
+                    access.rpush("TaskStatus#" + requestId, "Status_ERROR");
+                    access.set("TaskErrorMessage#" + requestId, "Simulation output stream not captured");
 
-                    LOG.error("Simulation output stream not captured for "+requestId);
+                    LOG.error("Simulation output stream not captured for " + requestId);
                 }
 
                 /**
@@ -322,25 +316,27 @@ public class TaskRunner implements Runnable {
             } finally {
                 try {
                     this.access.close();
-                } catch (IOException e) {}
+                } catch (IOException e) {
+                }
 
-                if(stdInput!=null){
+                if (stdInput != null) {
                     try {
                         stdInput.close();
-                    } catch (IOException e) {}
+                    } catch (IOException e) {
+                    }
                 }
             }
         }
     }
 
-    private String readValueFromTable(String firstCellContent, int columnIdx, Elements rows){
+    private String readValueFromTable(String firstCellContent, int columnIdx, Elements rows) {
         Iterator<Element> rowIter = rows.iterator();
         rowIter.next();  //skip header
 
-        while(rowIter.hasNext()){
+        while (rowIter.hasNext()) {
             Elements tds = rowIter.next().select("td");
 
-            if(tds.get(0).ownText().trim().equalsIgnoreCase(firstCellContent)){
+            if (tds.get(0).ownText().trim().equalsIgnoreCase(firstCellContent)) {
                 return tds.get(columnIdx).ownText();
             }
         }
@@ -348,20 +344,20 @@ public class TaskRunner implements Runnable {
         return null;
     }
 
-    private JsonObject extractHeaderInfo(String columnTitle, Element header){
+    private JsonObject extractHeaderInfo(String columnTitle, Element header) {
         JsonObject jo = new JsonObject();
 
         Elements tds = header.select("td");
 
-        int idx=0;
+        int idx = 0;
 
         Iterator<Element> tdIter = tds.iterator();
-        String target = columnTitle+" [";
-        while(tdIter.hasNext()){
+        String target = columnTitle + " [";
+        while (tdIter.hasNext()) {
             Element td = tdIter.next();
             String content = td.ownText();
-            if(content.startsWith(target)){
-                jo.addProperty("unit", content.substring(content.indexOf("[")+1, content.indexOf("]")));
+            if (content.startsWith(target)) {
+                jo.addProperty("unit", content.substring(content.indexOf("[") + 1, content.indexOf("]")));
                 jo.addProperty("idx", idx);
 
                 return jo;
@@ -373,11 +369,11 @@ public class TaskRunner implements Runnable {
         return null;
     }
 
-    private String readCompressedBase64String(String path){
+    private String readCompressedBase64String(String path) {
         String result;
-        while((result = FileUtil.readBase64CompressedString(path)) == null){
+        while ((result = FileUtil.readBase64CompressedString(path)) == null) {
             try {
-                Thread.sleep(RandomUtil.getRandom(5*60*1000));  //sleep at most 5 minutes and try again
+                Thread.sleep(RandomUtil.getRandom(5 * 60 * 1000));  //sleep at most 5 minutes and try again
             } catch (InterruptedException e) {
                 e.printStackTrace();
             }

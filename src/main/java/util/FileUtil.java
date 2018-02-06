@@ -1,6 +1,8 @@
 package main.java.util;
 
 import java.io.*;
+import java.nio.file.Files;
+import java.nio.file.StandardOpenOption;
 import java.util.Base64;
 import java.util.Iterator;
 import java.util.zip.GZIPOutputStream;
@@ -128,5 +130,22 @@ public class FileUtil {
                     break;
             }
         }
+    }
+
+    public static boolean appendToFile(File file, String content){
+        /*try {
+            Files.write(file.toPath(), (content+System.lineSeparator()).getBytes(), StandardOpenOption.APPEND);
+        } catch (IOException e) {
+            return false;
+        }*/
+
+        try(FileWriter fw = new FileWriter(file, true);
+                BufferedWriter br = new BufferedWriter(fw)){
+            br.write(content+System.lineSeparator());
+        }catch (IOException e){
+            return false;
+        }
+
+        return true;
     }
 }

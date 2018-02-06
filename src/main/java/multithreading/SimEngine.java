@@ -90,6 +90,7 @@ public class SimEngine implements Runnable{
 
             String jsonInString = null;
             try(RedisAccess access = RedisAccessFactory.getAccess()){
+                //jsonInString = access.rpop("Brummitt_TaskQueue");
                 jsonInString = access.rpop("TaskQueue");
                 System.out.println("Read from task queue: "+jsonInString);
             }catch (IOException e){
