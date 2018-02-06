@@ -49,6 +49,7 @@ public enum SimulationManager {
                 BufferedReader stdInput = new BufferedReader(new InputStreamReader(pr.getInputStream()));
 
                 String s;
+                boolean foundPID = false;
                 reading: while ((s = stdInput.readLine()) != null) {
                     if (s.contains("EnergyPlus Starting")) {
                         List<String> pids = ProcessUtil.getPIDs();
@@ -60,13 +61,20 @@ public enum SimulationManager {
 
                                     pid = p;
                                     LOG.info("PID found "+pid);
-                                    counter.incrementAndGet();
+                                    LOG.info("Simulation counter incremented: "+counter.incrementAndGet());
+
+                                    foundPID = true;
                                     break reading;
                                 }
                             }
                         }
                         LOG.warn("PID not found for "+reqId);
                     }
+                }
+
+                if(!foundPID){
+                    LOG.info("PID NOT found");
+                    LOG.info("Simulation counter stays same: "+counter.get());
                 }
 
                 wrapper.process = pr;
@@ -92,7 +100,11 @@ public enum SimulationManager {
             String pid = reqIdToPIDMap.remove(reqId);
             if(pid!=null){
                 existingPIDs.remove(pid);
-                counter.decrementAndGet();
+                LOG.info("Finish simulation found PID");
+                LOG.info("Simulation counter decremented: "+counter.decrementAndGet());
+            }else {
+                LOG.info("Finish simulation NOT found PID");
+                LOG.info("Simulation counter stays same: "+counter.get());
             }
         }
     }
@@ -107,11 +119,18 @@ public enum SimulationManager {
             if(pid!=null){
                 try {
                     Runtime.getRuntime().exec("taskkill /PID "+pid+" /F");
-                    counter.decrementAndGet();
-                } catch (IOException e) {}
+                    LOG.info("Cancel simulation stops process");
+                    LOG.info("Simulation counter decremented: "+counter.decrementAndGet());
+                } catch (IOException e) {
+                    LOG.info("Cancel simulation stops process failed, "+e.getMessage());
+                    LOG.info("Simulation counter stays same: "+counter.get());
+                }
 
                 existingPIDs.remove(pid);
                 return true;
+            }else {
+                LOG.info("Cancel simulation process id NOT found");
+                LOG.info("Simulation counter stays same: "+counter.get());
             }
             return false;
         }
