@@ -79,7 +79,7 @@ public class Monitor implements Runnable {
             }
 
             try {
-                Thread.sleep(5 * 1000);
+                Thread.sleep(5 * 60 * 1000);
             } catch (InterruptedException e) {
             }
         }
