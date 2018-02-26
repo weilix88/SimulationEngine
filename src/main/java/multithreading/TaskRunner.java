@@ -94,30 +94,46 @@ public class TaskRunner implements Runnable {
         return null;
     }
 
-    private String copyWeatherFile(String weatherFile, String idfPath) {
-        String country = weatherFile.split("_")[0];
-        String state = weatherFile.split("_")[1];
+    private String copyWeatherFile(String weatherFile, String commitId, String idfPath) {
+        File src = null;
+        String platform = EngineConfig.readProperty("platform");
 
-        try {
-            File src = null;
-            String platform = EngineConfig.readProperty("platform");
+        if(weatherFile!=null && !weatherFile.isEmpty()){
+            String country = weatherFile.split("_")[0];
+            String state = weatherFile.split("_")[1];
+
             if (platform.equalsIgnoreCase("aws")) {
                 String path = country + "/" + state + "/";
                 S3FileDownloader s3FileDownloader = new S3FileDownloader(null);
-                src = s3FileDownloader.download(GlobalConstant.WEATHER_FILE_BUCKET, path, weatherFile + ".epw");
+                src = s3FileDownloader.download(EngineConfig.readProperty("WeatherFileS3"), path, weatherFile + ".epw");
             } else {
-                URI uri = new URI("file:///" + EngineConfig.readProperty("WeatherFilesBasePath") + country + "/" + state + "/" + weatherFile + ".epw");
-                src = new File(uri);
+                try {
+                    URI uri = new URI("file:///" + EngineConfig.readProperty("WeatherFilesBasePath") + country + "/" + state + "/" + weatherFile + ".epw");
+                    src = new File(uri);
+                } catch (URISyntaxException e) {
+                    e.printStackTrace();
+                }
             }
+        }else {
+            if (platform.equalsIgnoreCase("aws")) {
+                S3FileDownloader s3FileDownloader = new S3FileDownloader(null);
+                src = s3FileDownloader.download(EngineConfig.readProperty("CustomWeatherFileS3"),
+                        GlobalConstant.CUSTOM_WEATHER_FILE_PATH, commitId + ".epw");
+            }else {
+                String path = EngineConfig.readProperty("SimulationBasePath")+commitId+".epw";
+                src = new File(path);
+            }
+        }
 
-            File dest = new File(idfPath + "\\weatherfile.epw");
+        if(src != null) {
+            try {
+                File dest = new File(idfPath + "\\weatherfile.epw");
 
-            FileUtils.copyFile(src, dest);
-            return idfPath + "\\weatherfile.epw";
-        } catch (IOException e) {
-            LOG.error(e.getMessage(), e);
-        } catch (URISyntaxException e) {
-            LOG.error(e.getMessage(), e);
+                FileUtils.copyFile(src, dest);
+                return idfPath + "\\weatherfile.epw";
+            } catch (IOException e) {
+                LOG.error(e.getMessage(), e);
+            }
         }
         return null;
     }
@@ -152,6 +168,7 @@ public class TaskRunner implements Runnable {
         String version = jo.get("version").getAsString();
         String weatherFile = jo.get("weather_file").getAsString();
         String requestId = jo.get("request_id").getAsString();
+        String commitId = jo.get("sim_commit_id").getAsString();
         String energyPlusPath = getEnergyPlusPath(version);
 
         /** create work directory */
@@ -173,7 +190,7 @@ public class TaskRunner implements Runnable {
         String batchPath = createEnergyPlusBatchFile(version, path, energyPlusPath);
         LOG.info("Task runner copied batch file " + requestId);
 
-        if (batchPath != null && copyWeatherFile(weatherFile, path) != null) {
+        if (batchPath != null && copyWeatherFile(weatherFile, commitId, path) != null) {
             LOG.info("Task runner copied weather file " + requestId);
 
             downloadCSV(path, jo.get("csvs").getAsJsonArray(), jo.get("s3_bucket").getAsString());
