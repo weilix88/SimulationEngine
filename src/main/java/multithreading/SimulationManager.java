@@ -1,16 +1,18 @@
 package main.java.multithreading;
 
-import main.java.util.ProcessUtil;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
 import java.io.BufferedReader;
 import java.io.File;
 import java.io.IOException;
 import java.io.InputStreamReader;
-import java.util.*;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicInteger;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import main.java.util.ProcessUtil;
 
 public enum SimulationManager {
     INSTANCE;
@@ -41,7 +43,7 @@ public enum SimulationManager {
     public StartSimulationWrapper startSimulation(String reqId, String[] commandline, String path){
         StartSimulationWrapper wrapper = new StartSimulationWrapper();
 
-        synchronized (SimulationManager.class){
+        //synchronized (SimulationManager.class){
             String pid = null;
 
             try {
@@ -50,8 +52,36 @@ public enum SimulationManager {
 
                 String s;
                 boolean foundPID = false;
-                reading: while ((s = stdInput.readLine()) != null) {
+                /*reading: while ((s = stdInput.readLine()) != null) {
                     if (s.contains("EnergyPlus Starting")) {
+                    	long tryPid = -1;   // pr's PID is not E+'s PID
+                    	try {
+                    		//for windows
+                            if (pr.getClass().getName().equals("java.lang.Win32Process") ||
+                                   pr.getClass().getName().equals("java.lang.ProcessImpl")) 
+                            {
+                                Field f = pr.getClass().getDeclaredField("handle");
+                                f.setAccessible(true);              
+                                long handl = f.getLong(pr);
+                                Kernel32 kernel = Kernel32.INSTANCE;
+                                W32API.HANDLE hand = new W32API.HANDLE();
+                                hand.setPointer(Pointer.createConstant(handl));
+                                tryPid = kernel.GetProcessId(hand);
+                                f.setAccessible(false);
+                            }
+                            //for unix based operating systems
+                            else if (pr.getClass().getName().equals("java.lang.UNIXProcess")) 
+                            {
+                                Field f = pr.getClass().getDeclaredField("pid");
+                                f.setAccessible(true);
+                                tryPid = f.getLong(pr);
+                                f.setAccessible(false);
+                            }
+    					} catch (Exception e) {
+    						LOG.error(e.getMessage(), e);
+    						e.printStackTrace();
+    					}
+                    	
                         List<String> pids = ProcessUtil.getPIDs();
                         if (pids.size() > 0) {
                             for(String p : pids){
@@ -60,7 +90,7 @@ public enum SimulationManager {
                                     reqIdToPIDMap.put(reqId, p);
 
                                     pid = p;
-                                    LOG.info("PID found "+pid);
+                                    LOG.info("PID found "+pid+" vs handle "+tryPid);
                                     LOG.info("Simulation counter incremented: "+counter.incrementAndGet());
 
                                     foundPID = true;
@@ -75,15 +105,16 @@ public enum SimulationManager {
                 if(!foundPID){
                     LOG.info("PID NOT found");
                     LOG.info("Simulation counter stays same: "+counter.get());
-                }
+                }*/
 
+                counter.incrementAndGet();
                 wrapper.process = pr;
                 wrapper.pid = pid;
                 wrapper.stdInput = stdInput;
             } catch (IOException e) {
                 LOG.error(e.getMessage(), e);
             }
-        }
+        //}
 
         return wrapper;
     }
@@ -101,11 +132,10 @@ public enum SimulationManager {
             if(pid!=null){
                 existingPIDs.remove(pid);
                 LOG.info("Finish simulation found PID");
-                LOG.info("Simulation counter decremented: "+counter.decrementAndGet());
             }else {
                 LOG.info("Finish simulation NOT found PID");
-                LOG.info("Simulation counter stays same: "+counter.get());
             }
+            LOG.info("Simulation counter decremented: "+counter.decrementAndGet());
         }
     }
 
