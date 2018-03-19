@@ -12,8 +12,6 @@ import java.util.concurrent.atomic.AtomicInteger;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import main.java.util.ProcessUtil;
-
 public enum SimulationManager {
     INSTANCE;
 
@@ -25,7 +23,7 @@ public enum SimulationManager {
     private static volatile AtomicInteger counter = new AtomicInteger(0);
 
     public int getRunningSimulation(){
-        return ProcessUtil.getPIDs().size();
+        return counter.get();
     }
 
     public Map<String, String> getReqIdToPIDMap(){
@@ -41,6 +39,8 @@ public enum SimulationManager {
      * @return
      */
     public StartSimulationWrapper startSimulation(String reqId, String[] commandline, String path){
+    	counter.incrementAndGet();
+    	
         StartSimulationWrapper wrapper = new StartSimulationWrapper();
 
         //synchronized (SimulationManager.class){
@@ -106,8 +106,7 @@ public enum SimulationManager {
                     LOG.info("PID NOT found");
                     LOG.info("Simulation counter stays same: "+counter.get());
                 }*/
-
-                counter.incrementAndGet();
+                
                 wrapper.process = pr;
                 wrapper.pid = pid;
                 wrapper.stdInput = stdInput;
