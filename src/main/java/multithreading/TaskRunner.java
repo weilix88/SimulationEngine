@@ -1,16 +1,21 @@
 package main.java.multithreading;
 
-import com.google.gson.JsonArray;
-import com.google.gson.JsonObject;
-import main.java.aws.meta.GlobalConstant;
-import main.java.aws.meta.InstanceInfo;
-import main.java.aws.meta.PathUtil;
-import main.java.aws.redis.RedisAccess;
-import main.java.aws.redis.RedisAccessFactory;
-import main.java.aws.s3.S3FileDownloader;
-import main.java.config.EngineConfig;
-import main.java.util.FileUtil;
-import main.java.util.RandomUtil;
+import static main.java.util.FileUtil.TAG;
+
+import java.io.BufferedReader;
+import java.io.BufferedWriter;
+import java.io.File;
+import java.io.FileInputStream;
+import java.io.FileOutputStream;
+import java.io.FileWriter;
+import java.io.IOException;
+import java.io.InputStreamReader;
+import java.io.OutputStreamWriter;
+import java.net.URI;
+import java.net.URISyntaxException;
+import java.util.Base64;
+import java.util.Iterator;
+
 import org.apache.commons.io.FileUtils;
 import org.jsoup.Jsoup;
 import org.jsoup.nodes.Document;
@@ -19,13 +24,19 @@ import org.jsoup.select.Elements;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.io.*;
-import java.net.URI;
-import java.net.URISyntaxException;
-import java.util.Base64;
-import java.util.Iterator;
+import com.google.gson.JsonArray;
+import com.google.gson.JsonObject;
 
-import static main.java.util.FileUtil.TAG;
+import main.java.cloud.CloudFileDownloadFactory;
+import main.java.cloud.CloudFileDownloader;
+import main.java.cloud.GlobalConstant;
+import main.java.cloud.InstanceInfo;
+import main.java.cloud.PathUtil;
+import main.java.cloud.RedisAccess;
+import main.java.cloud.RedisAccessFactory;
+import main.java.config.EngineConfig;
+import main.java.util.FileUtil;
+import main.java.util.RandomUtil;
 
 public class TaskRunner implements Runnable {
     private final Logger LOG = LoggerFactory.getLogger(TaskRunner.class);
@@ -96,16 +107,15 @@ public class TaskRunner implements Runnable {
 
     private String copyWeatherFile(String weatherFile, String commitId, String idfPath) {
         File src = null;
-        String platform = EngineConfig.readProperty("platform");
 
+        CloudFileDownloader downloader = CloudFileDownloadFactory.getCloudFileDownloader();        
         if(weatherFile!=null && !weatherFile.isEmpty()){
             String country = weatherFile.split("_")[0];
             String state = weatherFile.split("_")[1];
 
-            if (platform.equalsIgnoreCase("aws")) {
-                String path = country + "/" + state + "/";
-                S3FileDownloader s3FileDownloader = new S3FileDownloader(null);
-                src = s3FileDownloader.download(EngineConfig.readProperty("WeatherFileS3"), path, weatherFile + ".epw");
+            if (downloader!=null) {
+                String path = country + "/" + state;
+                src = downloader.downloadWeatherFile(path, weatherFile + ".epw");
             } else {
                 try {
                     URI uri = new URI("file:///" + EngineConfig.readProperty("WeatherFilesBasePath") + country + "/" + state + "/" + weatherFile + ".epw");
@@ -115,10 +125,8 @@ public class TaskRunner implements Runnable {
                 }
             }
         }else {
-            if (platform.equalsIgnoreCase("aws")) {
-                S3FileDownloader s3FileDownloader = new S3FileDownloader(null);
-                src = s3FileDownloader.download(EngineConfig.readProperty("CustomWeatherFileS3"),
-                        GlobalConstant.CUSTOM_WEATHER_FILE_PATH, commitId + ".epw");
+            if (downloader!=null) {
+                src = downloader.downloadCustomeWeatherFile(GlobalConstant.CUSTOM_WEATHER_FILE_PATH, commitId + ".epw");
             }else {
                 String path = EngineConfig.readProperty("SimulationBasePath")+commitId+".epw";
                 src = new File(path);
@@ -142,12 +150,17 @@ public class TaskRunner implements Runnable {
         //JsonArray ja = task.getCsvs();
         if (csvs != null && csvs.size() > 0) {
             //String bucketName = task.getS3Bucket();
-            String path = PathUtil.PROJECT_SCHEDULE + "/";
+            String path = PathUtil.PROJECT_SCHEDULE;
 
-            S3FileDownloader downloader = new S3FileDownloader(null);
+            CloudFileDownloader downloader = CloudFileDownloadFactory.getCloudFileDownloader();
+            if(downloader==null) {
+            	LOG.error("Cannot download schedule CSV", new IllegalStateException());
+            	return;
+            }
+            
             for (int i = 0; i < csvs.size(); i++) {
                 String fileName = csvs.get(i).getAsString();
-                File csvFile = downloader.download(bucketName, path, fileName);
+                File csvFile = downloader.downloadScheduleFile(bucketName, path, fileName);
 
                 File dest = new File(idfPath + "\\" + fileName);
                 try {
@@ -283,7 +296,6 @@ public class TaskRunner implements Runnable {
                                     if (value != null) {
                                         String unit = info.get("unit").getAsString();
 
-                                        //TODO save to redis
                                         access.set("Taskeui_unit#" + requestId, unit);
                                         access.set("Taskeui_value#" + requestId, value);
                                     }

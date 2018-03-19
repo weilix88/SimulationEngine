@@ -9,7 +9,9 @@ import java.io.IOException;
 
 @WebServlet(name = "HealthCheck", urlPatterns = "/HealthCheck")
 public class HealthCheck extends HttpServlet {
-    protected void doPost(HttpServletRequest request, HttpServletResponse response) throws ServletException, IOException {
+	private static final long serialVersionUID = 6474074256228497443L;
+
+	protected void doPost(HttpServletRequest request, HttpServletResponse response) throws ServletException, IOException {
         doGet(request, response);
     }
 

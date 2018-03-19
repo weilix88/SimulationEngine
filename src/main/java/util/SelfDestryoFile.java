@@ -6,7 +6,8 @@ import org.slf4j.LoggerFactory;
 import java.io.File;
 
 public class SelfDestryoFile extends File {
-    private final Logger LOG = LoggerFactory.getLogger(this.getClass());
+	private static final long serialVersionUID = -1345108234928057207L;
+	private final Logger LOG = LoggerFactory.getLogger(this.getClass());
     private boolean includeParent;
 
     public SelfDestryoFile(String pathName, boolean includeParent){

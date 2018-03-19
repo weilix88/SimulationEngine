@@ -1,4 +1,4 @@
-package main.java.aws.redis;
+package main.java.cloud;
 
 import redis.clients.jedis.Jedis;
 import redis.clients.jedis.JedisCluster;

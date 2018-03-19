@@ -1,47 +1,84 @@
 package main.java.test;
 
-import main.java.util.ProcessUtil;
-
+import java.io.BufferedInputStream;
 import java.io.BufferedReader;
 import java.io.File;
 import java.io.IOException;
 import java.io.InputStreamReader;
-import java.util.List;
+import java.net.HttpURLConnection;
+import java.net.MalformedURLException;
+import java.net.URL;
+
+import com.microsoft.azure.PagedList;
+import com.microsoft.azure.management.Azure;
+import com.microsoft.azure.management.compute.VirtualMachine;
+import com.microsoft.rest.LogLevel;
 
 public class Test {
-    public static void main(String[] args) throws IOException, InterruptedException {
-        String batchPath = "D:\\TestOut\\Test\\RunEPlus.bat";
-        String path = "D:\\TestOut\\Test\\";
-        String[] commandline = {batchPath, path+"IDF", "weatherfile"};
-
-        Process pr = Runtime.getRuntime().exec(commandline, null, new File(path));
-
-        String pid = "";
-
-        BufferedReader stdInput = new BufferedReader(new InputStreamReader(pr.getInputStream()));
-
-        String s;
-        int i=0;
-        while ((s = stdInput.readLine()) != null) {
-            System.out.println(s);
-
-            if(s.contains("EnergyPlus Starting")){
-                List<String> pids = ProcessUtil.getPIDs();
-                if(pids.size()>0){
-                    pid = pids.get(0);
-                }
-                System.out.println("PID: "+pid);
-                i = 0;
-            }
-            i++;
-            if(i==100){
-                if(!pid.isEmpty()){
-                    Runtime.getRuntime().exec("taskkill /PID "+pid+" /F");
-                    System.out.println("Taskkilled, "+pid);
-                }
-            }
+	protected static String get(String address){
+        URL url;
+        try {
+            url = new URL(address);
+        } catch (MalformedURLException e) {
+            e.printStackTrace();
+            return "";
         }
 
-        stdInput.close();
+        HttpURLConnection httpConn;
+        try {
+            httpConn = (HttpURLConnection)url.openConnection();
+        } catch (IOException e) {
+        	e.printStackTrace();
+            return "";
+        }
+        httpConn.setRequestProperty("MetaData", "true");
+        httpConn.setUseCaches(false);
+
+        int status;
+        try {
+            status = httpConn.getResponseCode();
+            if(status == HttpURLConnection.HTTP_OK){
+                try(BufferedInputStream bis = new BufferedInputStream(httpConn.getInputStream());
+                    InputStreamReader isReader = new InputStreamReader(bis);
+                    BufferedReader reader = new BufferedReader(isReader)){
+                    String line;
+                    StringBuilder sb = new StringBuilder();
+
+                    while((line=reader.readLine()) != null){
+                        sb.append(line);
+                    }
+
+                    httpConn.disconnect();
+
+                    return sb.toString();
+                }
+            }else {
+                System.err.println("HTTP request "+address+", Server returned abnormal status: "+status);
+            }
+        } catch (IOException e) {
+        	e.printStackTrace();
+        }
+
+        return "";
+    }
+	
+    public static void main(String[] args) throws IOException, InterruptedException {
+        //String response = Test.get("http://169.254.169.254/metadata/instance?api-version=2017-08-01");
+        //System.out.println(response);
+    	
+    	final File credFile = new File("C:\\auth_file");
+
+    	Azure azure = Azure
+    	        .configure()
+    	        .withLogLevel(LogLevel.NONE)
+    	        .authenticate(credFile)
+    	        .withDefaultSubscription();
+    	
+    	//VirtualMachine vm = azure.virtualMachines().getById("/subscriptions/c0a6b691-fcc7-4a5b-837a-dc20d1293847/resourceGroups/BuildSimHub/providers/Microsoft.Compute/virtualMachines/SimEngine");
+    	PagedList<VirtualMachine> list = azure.virtualMachines().list(); // not working
+    	
+    	for(VirtualMachine vm : list) {
+    		System.out.println(vm.vmId());
+    	}
     }
 }

@@ -14,7 +14,7 @@ import java.net.URL;
 public class NetworkRequester {
     private static final Logger LOG = LoggerFactory.getLogger(NetworkRequester.class);
 
-    public static String get(String address){
+    public static String get(String address, String[][] headers){
         URL url;
         try {
             url = new URL(address);
@@ -31,6 +31,14 @@ public class NetworkRequester {
             return "";
         }
         httpConn.setUseCaches(false);
+        
+        if(headers!=null && headers.length>0) {
+        	for(String[] header : headers) {
+        		if(header!=null && header.length>1) {
+        			httpConn.setRequestProperty(header[0], header[1]);
+        		}
+        	}
+        }
 
         int status;
         try {

@@ -17,7 +17,9 @@ import java.util.Map;
 
 @WebServlet(name = "SimulationsStatus", urlPatterns = "/SimulationsStatus")
 public class SimulationsStatus extends HttpServlet {
-    protected void doPost(HttpServletRequest request, HttpServletResponse response) throws ServletException, IOException {
+	private static final long serialVersionUID = 3745652788704405881L;
+
+	protected void doPost(HttpServletRequest request, HttpServletResponse response) throws ServletException, IOException {
         this.doGet(request, response);
     }
 

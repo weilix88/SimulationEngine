@@ -12,8 +12,8 @@ import org.slf4j.LoggerFactory;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
 
-import main.java.aws.redis.RedisAccess;
-import main.java.aws.redis.RedisAccessFactory;
+import main.java.cloud.RedisAccess;
+import main.java.cloud.RedisAccessFactory;
 
 public class SimEngine implements Runnable{
     private final static Logger LOG = LoggerFactory.getLogger(SimEngine.class);

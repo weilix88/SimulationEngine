@@ -1,8 +1,9 @@
 package main.java.api;
 
 import com.google.gson.JsonObject;
-import main.java.aws.redis.RedisAccess;
-import main.java.aws.redis.RedisAccessFactory;
+
+import main.java.cloud.RedisAccess;
+import main.java.cloud.RedisAccessFactory;
 import main.java.multithreading.SimulationManager;
 import main.java.util.ServletUtil;
 
@@ -15,7 +16,9 @@ import java.io.IOException;
 
 @WebServlet(name = "CancelSimulation", urlPatterns = "/CancelSimulation")
 public class CancelSimulation extends HttpServlet {
-    protected void doPost(HttpServletRequest request, HttpServletResponse response) throws ServletException, IOException {
+	private static final long serialVersionUID = 4676653221110488912L;
+
+	protected void doPost(HttpServletRequest request, HttpServletResponse response) throws ServletException, IOException {
         String reqId = request.getParameter("req_id");
 
         JsonObject jo = new JsonObject();

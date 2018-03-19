@@ -1,14 +1,16 @@
-package main.java.aws.redis;
-
-import main.java.config.EngineConfig;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-import redis.clients.jedis.HostAndPort;
-import redis.clients.jedis.Jedis;
-import redis.clients.jedis.JedisCluster;
+package main.java.cloud;
 
 import java.util.HashSet;
 import java.util.Set;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import main.java.config.EngineConfig;
+import redis.clients.jedis.HostAndPort;
+import redis.clients.jedis.Jedis;
+import redis.clients.jedis.JedisCluster;
+import redis.clients.jedis.JedisShardInfo;
 
 public class RedisAccessFactory {
 	private static final Logger LOG = LoggerFactory.getLogger(RedisAccessFactory.class);
@@ -28,6 +30,14 @@ public class RedisAccessFactory {
 				}
 				JedisCluster cluster = new JedisCluster(hosts);
 				return new RedisAccess(cluster);
+			case "azure":
+				LOG.info("Connecting to Azure Redis cluster");
+				JedisShardInfo shardInfo = new JedisShardInfo(EngineConfig.readProperty("RedisAzureHost"), 
+						Integer.parseInt(EngineConfig.readProperty("RedisAzurePort")), 
+						true);
+				shardInfo.setPassword(EngineConfig.readProperty("RedisAzurePassword"));
+				Jedis azureClient = new Jedis(shardInfo);
+				return new RedisAccess(azureClient);
 			default:
 				LOG.info("Connecting to local Redis server");
 				Jedis client = new Jedis("localhost");

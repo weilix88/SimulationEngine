@@ -7,11 +7,10 @@ import java.io.PrintWriter;
 
 import javax.servlet.http.HttpServletResponse;
 
-import com.google.gson.JsonElement;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import com.google.gson.JsonObject;
+import com.google.gson.JsonElement;
 
 public class ServletUtil {
     private static final Logger LOG = LoggerFactory.getLogger(ServletUtil.class);

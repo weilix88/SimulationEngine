@@ -1,18 +1,24 @@
 package main.java.util;
 
-import java.io.*;
-import java.nio.file.Files;
-import java.nio.file.StandardOpenOption;
+import java.io.BufferedReader;
+import java.io.BufferedWriter;
+import java.io.ByteArrayOutputStream;
+import java.io.File;
+import java.io.FileInputStream;
+import java.io.FileWriter;
+import java.io.IOException;
+import java.io.InputStreamReader;
 import java.util.Base64;
 import java.util.Iterator;
 import java.util.zip.GZIPOutputStream;
 
-import main.java.config.EngineConfig;
 import org.jsoup.nodes.Document;
 import org.jsoup.nodes.Element;
 import org.jsoup.select.Elements;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import main.java.config.EngineConfig;
 
 public class FileUtil {
     private static final Logger LOG = LoggerFactory.getLogger(FileUtil.class);
