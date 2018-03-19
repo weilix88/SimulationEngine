@@ -101,6 +101,7 @@ public class SimEngine implements Runnable{
 
                 // run simulation
                 executor.execute(new TaskRunner(jo));
+                SimulationManager.counter.incrementAndGet();
             }else {
                 try {
                     this.wait();

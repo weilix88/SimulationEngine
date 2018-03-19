@@ -20,7 +20,7 @@ public enum SimulationManager {
 
     private final Logger LOG = LoggerFactory.getLogger(this.getClass());
 
-    private static volatile AtomicInteger counter = new AtomicInteger(0);
+    public static volatile AtomicInteger counter = new AtomicInteger(0);
 
     public int getRunningSimulation(){
         return counter.get();
@@ -39,8 +39,6 @@ public enum SimulationManager {
      * @return
      */
     public StartSimulationWrapper startSimulation(String reqId, String[] commandline, String path){
-    	counter.incrementAndGet();
-    	
         StartSimulationWrapper wrapper = new StartSimulationWrapper();
 
         //synchronized (SimulationManager.class){
@@ -50,9 +48,9 @@ public enum SimulationManager {
                 Process pr = Runtime.getRuntime().exec(commandline, null, new File(path));
                 BufferedReader stdInput = new BufferedReader(new InputStreamReader(pr.getInputStream()));
 
-                String s;
+                /*String s;
                 boolean foundPID = false;
-                /*reading: while ((s = stdInput.readLine()) != null) {
+                reading: while ((s = stdInput.readLine()) != null) {
                     if (s.contains("EnergyPlus Starting")) {
                     	long tryPid = -1;   // pr's PID is not E+'s PID
                     	try {
