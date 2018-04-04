@@ -48,7 +48,7 @@ public class InstanceInfo {
     private static String queryPublicIP(){
     	String platform = EngineConfig.readProperty("platform");
     	if(platform.equalsIgnoreCase("aws")) {
-    		return NetworkRequester.get("http://"+ EngineConfig.readProperty("metaDataQueryS3")+"public-ipv4", null);
+    		return NetworkRequester.get("http://"+ EngineConfig.readProperty("metaDataQuery")+"public-ipv4", null);
     	}else if(platform.equalsIgnoreCase("azure")) {
     		String[][] headers = {{"MetaData", "true"}};
     		String response = NetworkRequester.get("http://"+ EngineConfig.readProperty("NetworkMetaDataQueryAzure"), headers);
@@ -64,7 +64,7 @@ public class InstanceInfo {
     private static String queryInstanceId(){
     	String platform = EngineConfig.readProperty("platform");
     	if(platform.equalsIgnoreCase("aws")) {
-    		return NetworkRequester.get("http://"+ EngineConfig.readProperty("metaDataQueryS3")+"instance-id", null);
+    		return NetworkRequester.get("http://"+ EngineConfig.readProperty("metaDataQuery")+"instance-id", null);
     	}else if(platform.equalsIgnoreCase("azure")) {
     		String[][] headers = {{"MetaData", "true"}};
     		String response = NetworkRequester.get("http://"+ EngineConfig.readProperty("InstanceMetaDataQueryAzure"), headers);
