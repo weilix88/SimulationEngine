@@ -14,6 +14,7 @@ import java.io.OutputStreamWriter;
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.util.Base64;
+import java.util.Collections;
 import java.util.Iterator;
 
 import org.apache.commons.io.FileUtils;
@@ -58,10 +59,6 @@ public class TaskRunner implements Runnable {
     /*public Task getTask() {
         return this.task;
     }*/
-
-    private String getEnergyPlusPath(String version) {
-        return EngineConfig.readProperty("EnergyPlusBasePath") + "EnergyPlusV" + version.replaceAll("\\.", "-") + "-0\\";
-    }
 
     /**
      * Return created energy plus batch file path
@@ -172,6 +169,26 @@ public class TaskRunner implements Runnable {
         }
     }
 
+    private boolean checkVersion(String version, String target){
+        String[] splitVersion = version.split("\\.");
+        String[] splitTarget = target.split("\\.");
+
+        try {
+            int v1 = Integer.parseInt(splitVersion[0]);
+            int t1 = Integer.parseInt(splitTarget[0]);
+
+            if(v1<t1){
+                return false;
+            }else if(v1>t1){
+                return true;
+            }else {
+                int v2 = Integer.parseInt(splitVersion[1]);
+                int t2 = Integer.parseInt(splitTarget[1]);
+                return v2>=t2;
+            }
+        }catch (NumberFormatException | ArrayIndexOutOfBoundsException e){}
+        return false;
+    }
 
     @Override
     public void run() {
@@ -182,7 +199,7 @@ public class TaskRunner implements Runnable {
         String weatherFile = jo.get("weather_file").getAsString();
         String requestId = jo.get("request_id").getAsString();
         String commitId = jo.get("sim_commit_id").getAsString();
-        String energyPlusPath = getEnergyPlusPath(version);
+        String energyPlusPath = FileUtil.getEnergyPlusPath(version);
 
         /** create work directory */
         String simBasePath = EngineConfig.readProperty("SimulationBasePath");
@@ -210,7 +227,7 @@ public class TaskRunner implements Runnable {
             LOG.info("Task runner downloaded CSV files " + requestId);
 
             /** create IDF file and write content to it */
-            File idfFile = new File(simBasePath + newFolder + "\\IDF.idf");
+            File idfFile = new File(path + "IDF.idf");
             String idfContent = jo.get("idf_content").getAsString();
             try (FileWriter fw = new FileWriter(idfFile);
                  BufferedWriter bw = new BufferedWriter(fw)) {
@@ -224,7 +241,12 @@ public class TaskRunner implements Runnable {
             /** create tmp file to save E+ output */
             File eplusOutput = new File(simBasePath + newFolder + "\\EPlus.out");
 
-            String[] commandline = {batchPath, path + "IDF", "weatherfile"};
+            String[] commandline;
+            if(checkVersion(version, "8.5")){
+                commandline = new String[]{energyPlusPath+"energyplus.exe", "-w", "weatherfile.epw", "IDF.idf"};
+            }else {
+                commandline = new String[]{batchPath, path + "IDF", "weatherfile"};
+            }
 
             BufferedReader stdInput = null;
             try {
@@ -269,8 +291,32 @@ public class TaskRunner implements Runnable {
                         access.set("Taskcsv#" + requestId, "");
                         access.set("Taskeso#" + requestId, "");
                         access.set("Taskmtr#" + requestId, "");
+                        access.set("Taskeio#" + requestId, "");
+                        access.set("Taskrdd#" + requestId, "");
                     } else {
-                        String html = FileUtil.readTextFile(path + "IDFTable.html");
+                        String[] files = new String[9];
+                        File dir = new File(path);
+                        for(File f : dir.listFiles()){
+                            String fName = f.getName();
+                            if(fName.endsWith(".html") || fName.endsWith(".htm")){
+                                files[0] = fName;
+                            }else if(fName.equalsIgnoreCase("eplusout.err") || fName.equalsIgnoreCase("IDF.err")){
+                                files[1] = fName;
+                            }else if(fName.endsWith(".csv")){
+                                files[2] = fName;
+                            }else if(fName.endsWith(".eso")){
+                                files[3] = fName;
+                            }else if(fName.endsWith(".mtr")){
+                                files[4] = fName;
+                            }else if(fName.endsWith(".eio")){
+                                files[5] = fName;
+                            }else if(fName.endsWith(".rdd")){
+                                files[6] = fName;
+                            }
+                        }
+
+
+                        String html = FileUtil.readTextFile(path + files[0]);
                         if (html != null && !html.isEmpty()) {
                             Document htmlDoc = Jsoup.parse(html);
                             FileUtil.processHTML(htmlDoc);
@@ -312,10 +358,12 @@ public class TaskRunner implements Runnable {
                             }
                         }
 
-                        access.set("Taskerr#" + requestId, readCompressedBase64String(path + "IDF.err"));
-                        access.set("Taskcsv#" + requestId, readCompressedBase64String(path + "IDF.csv"));
-                        access.set("Taskeso#" + requestId, readCompressedBase64String(path + "IDF.eso"));
-                        access.set("Taskmtr#" + requestId, readCompressedBase64String(path + "IDF.mtr"));
+                        access.set("Taskerr#" + requestId, readCompressedBase64String(path + files[1]));
+                        access.set("Taskcsv#" + requestId, readCompressedBase64String(path + files[2]));
+                        access.set("Taskeso#" + requestId, readCompressedBase64String(path + files[3]));
+                        access.set("Taskmtr#" + requestId, readCompressedBase64String(path + files[4]));
+                        access.set("Taskeio#" + requestId, readCompressedBase64String(path + files[5]));
+                        access.set("Taskrdd#" + requestId, readCompressedBase64String(path + files[6]));
                     }
 
                     access.rpush("TaskStatus#" + requestId, "Status_FINISHED");

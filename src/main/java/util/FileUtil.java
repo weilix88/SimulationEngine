@@ -154,4 +154,24 @@ public class FileUtil {
 
         return true;
     }
+
+    public static String readStringFromFile(File file) {
+        try (FileInputStream fis = new FileInputStream(file);
+             InputStreamReader isr = new InputStreamReader(fis, "utf-8");
+             BufferedReader br = new BufferedReader(isr)) {
+            StringBuilder sb = new StringBuilder();
+            String line;
+            while((line=br.readLine())!=null){
+                sb.append(line).append(System.lineSeparator());
+            }
+            return sb.toString();
+        } catch (IOException e) {
+            LOG.error(e.getMessage(), e);
+        }
+        return "";
+    }
+
+    public static String getEnergyPlusPath(String version) {
+        return EngineConfig.readProperty("EnergyPlusBasePath") + "EnergyPlusV" + version.replaceAll("\\.", "-") + "-0\\";
+    }
 }
