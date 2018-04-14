@@ -102,7 +102,7 @@ public class TaskRunner implements Runnable {
         return null;
     }
 
-    private String copyWeatherFile(String weatherFile, String commitId, String idfPath) {
+    private String copyWeatherFile(String weatherFile, String branchKey, String idfPath) {
         File src = null;
 
         CloudFileDownloader downloader = CloudFileDownloadFactory.getCloudFileDownloader();        
@@ -122,11 +122,13 @@ public class TaskRunner implements Runnable {
                 }
             }
         }else {
-            if (downloader!=null) {
-                src = downloader.downloadCustomeWeatherFile(GlobalConstant.CUSTOM_WEATHER_FILE_PATH, commitId + ".epw");
-            }else {
-                String path = EngineConfig.readProperty("SimulationBasePath")+commitId+".epw";
-                src = new File(path);
+            if(branchKey!=null && !branchKey.isEmpty()){
+                if (downloader!=null) {
+                    src = downloader.downloadCustomeWeatherFile(GlobalConstant.CUSTOM_WEATHER_FILE_PATH, branchKey + ".epw");
+                }else {
+                    String path = EngineConfig.readProperty("SimulationBasePath")+branchKey+".epw";
+                    src = new File(path);
+                }
             }
         }
 
@@ -198,7 +200,7 @@ public class TaskRunner implements Runnable {
         String version = jo.get("version").getAsString();
         String weatherFile = jo.get("weather_file").getAsString();
         String requestId = jo.get("request_id").getAsString();
-        String commitId = jo.get("sim_commit_id").getAsString();
+        String branchKey = jo.get("sim_branch_key").getAsString();
         String energyPlusPath = FileUtil.getEnergyPlusPath(version);
 
         /** create work directory */
@@ -220,7 +222,7 @@ public class TaskRunner implements Runnable {
         String batchPath = createEnergyPlusBatchFile(version, path, energyPlusPath);
         LOG.info("Task runner copied batch file " + requestId);
 
-        if (batchPath != null && copyWeatherFile(weatherFile, commitId, path) != null) {
+        if (batchPath != null && copyWeatherFile(weatherFile, branchKey, path) != null) {
             LOG.info("Task runner copied weather file " + requestId);
 
             downloadCSV(path, jo.get("csvs").getAsJsonArray(), jo.get("s3_bucket").getAsString());
