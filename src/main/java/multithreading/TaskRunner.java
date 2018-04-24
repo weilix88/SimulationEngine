@@ -201,6 +201,12 @@ public class TaskRunner implements Runnable {
         String weatherFile = jo.get("weather_file").getAsString();
         String requestId = jo.get("request_id").getAsString();
         String branchKey = jo.get("sim_branch_key").getAsString();
+
+        boolean expandObjects = false;
+        if(jo.has("expand_objects")){
+            expandObjects = jo.get("expand_objects").getAsBoolean();
+        }
+
         String energyPlusPath = FileUtil.getEnergyPlusPath(version);
 
         /** create work directory */
@@ -245,7 +251,9 @@ public class TaskRunner implements Runnable {
 
             String[] commandline;
             if(checkVersion(version, "8.5")){
-                commandline = new String[]{energyPlusPath+"energyplus.exe", "-w", "weatherfile.epw", "IDF.idf"};
+                commandline = expandObjects
+                        ? new String[]{energyPlusPath+"energyplus.exe", "-x", "-w", "weatherfile.epw", "IDF.idf"}
+                        : new String[]{energyPlusPath+"energyplus.exe", "-w", "weatherfile.epw", "IDF.idf"};
             }else {
                 commandline = new String[]{batchPath, path + "IDF", "weatherfile"};
             }
