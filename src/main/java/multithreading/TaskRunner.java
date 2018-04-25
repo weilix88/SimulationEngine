@@ -206,6 +206,10 @@ public class TaskRunner implements Runnable {
         if(jo.has("expand_objects")){
             expandObjects = jo.get("expand_objects").getAsBoolean();
         }
+        boolean outputESO = true;
+        if(jo.has("output_eso")){
+            outputESO = jo.get("output_eso").getAsString().equalsIgnoreCase("yes");
+        }
 
         String energyPlusPath = FileUtil.getEnergyPlusPath(version);
 
@@ -370,7 +374,7 @@ public class TaskRunner implements Runnable {
 
                         access.set("Taskerr#" + requestId, readCompressedBase64String(path + files[1]));
                         access.set("Taskcsv#" + requestId, readCompressedBase64String(path + files[2]));
-                        access.set("Taskeso#" + requestId, readCompressedBase64String(path + files[3]));
+                        access.set("Taskeso#" + requestId, outputESO ? readCompressedBase64String(path + files[3]) : "");
                         access.set("Taskmtr#" + requestId, readCompressedBase64String(path + files[4]));
                         access.set("Taskeio#" + requestId, readCompressedBase64String(path + files[5]));
                         access.set("Taskrdd#" + requestId, readCompressedBase64String(path + files[6]));
