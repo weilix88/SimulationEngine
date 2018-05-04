@@ -1,6 +1,9 @@
 package main.java.daemon;
 
+import java.io.File;
+import java.io.IOException;
 import java.util.Arrays;
+import java.util.List;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -15,6 +18,12 @@ import com.amazonaws.services.autoscaling.model.DescribeAutoScalingGroupsResult;
 import com.amazonaws.services.ec2.AmazonEC2;
 import com.amazonaws.services.ec2.AmazonEC2ClientBuilder;
 import com.amazonaws.services.ec2.model.TerminateInstancesRequest;
+import com.microsoft.azure.CloudException;
+import com.microsoft.azure.management.Azure;
+import com.microsoft.azure.management.compute.VirtualMachine;
+import com.microsoft.azure.management.compute.VirtualMachineScaleSet;
+import com.microsoft.azure.management.compute.VirtualMachineScaleSets;
+import com.microsoft.rest.LogLevel;
 
 import main.java.cloud.InstanceInfo;
 import main.java.config.EngineConfig;
@@ -28,6 +37,8 @@ public class Monitor implements Runnable {
 
     private boolean isOnCloud = false;
     private String platform = "";
+    
+    final File azureCredFile = new File("C:\\auth_file");
 
     public Monitor() {
     	this.platform = EngineConfig.readProperty("platform").toLowerCase();
@@ -77,30 +88,46 @@ public class Monitor implements Runnable {
 	                            client.terminateInstances(terminateRequest);
 	                        }
                     	}else if(platform.equals("azure")) {
-                    		/*final File credFile = new File("C:\\auth_file");
-
-                        	Azure azure;
-							try {
-								azure = Azure
-								        .configure()
-								        .withLogLevel(LogLevel.NONE)
-								        .authenticate(credFile)
-								        .withDefaultSubscription();
-								//TODO check current running number in LB
-								
-								
-								PagedList<VirtualMachine> list = azure.virtualMachines().list(); // not working
-	                        	
-	                        	String vmId = InstanceInfo.getInstanceID();
-	                        	for(VirtualMachine vm : list) {
-	                        		if(vm.vmId().equals(vmId)) {
-	                        			vm.deallocate();
-	                        		}
-	                        	}
-	                        	
-							} catch (CloudException | IOException e) {
-								LOG.error(e.getMessage(), e);
-							}*/
+                    		Azure azure;
+                    		try {
+                    			azure = Azure
+                    			        .configure()
+                    			        .withLogLevel(LogLevel.NONE)
+                    			        .authenticate(azureCredFile)
+                    			        .withDefaultSubscription();
+                    			
+                    			//check current running number in LB
+                    			
+                    			int running = 0;
+                    			String autoScalingGroupName = EngineConfig.readProperty("AutoscalingGroupName");
+                    			VirtualMachineScaleSets vmsses = azure.virtualMachineScaleSets();
+                    			List<VirtualMachineScaleSet> list = vmsses.list();
+                    			for(VirtualMachineScaleSet vmss : list){
+                    				if(vmss.name().equalsIgnoreCase(autoScalingGroupName)){
+                    					running = vmss.capacity();
+                    					break;
+                    				}
+                    			}
+                    			
+                    			LOG.info("Running instance in VMSS: "+running);
+                    			int minNum = Integer.parseInt(EngineConfig.readProperty("AusoscalingMinInstance"));
+                    			if(running>minNum){
+                    				// shutdown itself
+                    				
+                    				String vmName = InstanceInfo.getVMName();
+                    				List<VirtualMachine> vms = azure.virtualMachines().list();
+                    				for(VirtualMachine vm : vms){
+                    					if(vm.name().equalsIgnoreCase(vmName)){
+                    						LOG.info("Shutting down itself");
+                    						
+                    						vm.deallocate();
+                    						break;
+                    					}
+                    				}
+                    			}			
+                    		} catch (CloudException | IOException e) {
+                    			LOG.error(e.getMessage(), e);
+                    		}
                     	}
                     }
                 }

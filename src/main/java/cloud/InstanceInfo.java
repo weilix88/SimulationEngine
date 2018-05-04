@@ -30,7 +30,7 @@ public class InstanceInfo {
 
     public static String getInstanceID(){
         String platform = EngineConfig.readProperty("platform");
-        if(platform.equalsIgnoreCase("aws")) {
+        if(platform.equalsIgnoreCase("aws") || platform.equalsIgnoreCase("azure")) {
             if (instanceID.isEmpty()) {
                 synchronized (InstanceInfo.class) {
                     if (instanceID.isEmpty()) {
@@ -43,6 +43,22 @@ public class InstanceInfo {
         }
 
         return instanceID;
+    }
+    
+    public static String getVMName(){
+    	String platform = EngineConfig.readProperty("platform");
+    	if(platform.equalsIgnoreCase("azure")) {
+    		String[][] headers = {{"MetaData", "true"}};
+    		String response = NetworkRequester.get("http://"+ EngineConfig.readProperty("InstanceMetaDataQueryAzure"), headers);
+    		if(response!=null && !response.isEmpty()) {
+    			response = response.substring(response.indexOf("{"));
+    			
+    			JsonParser jp = new JsonParser();
+    	        JsonObject jo = jp.parse(response).getAsJsonObject();
+    	        return jo.get("name").getAsString();
+    		}
+    	}
+    	return "sim-vm";
     }
 
     private static String queryPublicIP(){
@@ -69,8 +85,11 @@ public class InstanceInfo {
     		String[][] headers = {{"MetaData", "true"}};
     		String response = NetworkRequester.get("http://"+ EngineConfig.readProperty("InstanceMetaDataQueryAzure"), headers);
     		if(response!=null && !response.isEmpty()) {
+    			response = response.substring(response.indexOf("{"));
+    			
     			JsonParser jp = new JsonParser();
     	        JsonObject jo = jp.parse(response).getAsJsonObject();
+    	        
     	        return jo.get("vmId").getAsString();
     		}
     	}
