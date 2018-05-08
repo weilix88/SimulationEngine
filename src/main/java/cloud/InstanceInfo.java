@@ -69,6 +69,8 @@ public class InstanceInfo {
     		String[][] headers = {{"MetaData", "true"}};
     		String response = NetworkRequester.get("http://"+ EngineConfig.readProperty("NetworkMetaDataQueryAzure"), headers);
     		if(response!=null && !response.isEmpty()) {
+				response = response.substring(response.indexOf("{"));
+
     			JsonParser jp = new JsonParser();
     	        JsonObject jo = jp.parse(response).getAsJsonObject();
     	        return jo.get("publicIpAddress").getAsString();
