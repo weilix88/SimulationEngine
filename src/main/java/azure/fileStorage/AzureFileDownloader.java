@@ -134,6 +134,17 @@ public class AzureFileDownloader implements CloudFileDownloader {
 		
 		return download(cloudFile, fileName);
 	}
+
+	@Override
+	public File downloadCustomeScheduleCSVFile(String pathToFolder, String fileName){
+		String share = EngineConfig.readProperty("CustomScheduleFileCloud");
+		CloudFile cloudFile = getCloudFile(share, pathToFolder, fileName);
+		if(cloudFile==null) {
+			return null;
+		}
+
+		return download(cloudFile, fileName);
+	}
 	
 	@Override
     public File downloadWeatherFile(String pathToFolder, String fileName){

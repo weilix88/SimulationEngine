@@ -2,20 +2,14 @@ package main.java.multithreading;
 
 import static main.java.util.FileUtil.TAG;
 
-import java.io.BufferedReader;
-import java.io.BufferedWriter;
-import java.io.File;
-import java.io.FileInputStream;
-import java.io.FileOutputStream;
-import java.io.FileWriter;
-import java.io.IOException;
-import java.io.InputStreamReader;
-import java.io.OutputStreamWriter;
+import java.io.*;
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.util.Base64;
-import java.util.Collections;
 import java.util.Iterator;
+import java.util.List;
+import java.util.zip.ZipEntry;
+import java.util.zip.ZipInputStream;
 
 import org.apache.commons.io.FileUtils;
 import org.jsoup.Jsoup;
@@ -105,7 +99,7 @@ public class TaskRunner implements Runnable {
     private String copyWeatherFile(String weatherFile, String branchKey, String idfPath) {
         File src = null;
 
-        CloudFileDownloader downloader = CloudFileDownloadFactory.getCloudFileDownloader();        
+        CloudFileDownloader downloader = CloudFileDownloadFactory.getCloudFileDownloader();
         if(weatherFile!=null && !weatherFile.isEmpty()){
             String country = weatherFile.split("_")[0];
             String state = weatherFile.split("_")[1];
@@ -140,6 +134,43 @@ public class TaskRunner implements Runnable {
                 return idfPath + "\\weatherfile.epw";
             } catch (IOException e) {
                 LOG.error(e.getMessage(), e);
+            }
+        }
+        return null;
+    }
+
+    private String downLoadCustomScheduleCSVFile(String commitId, String idfPath) {
+        File zipFile = null;
+
+        if(commitId!=null && !commitId.isEmpty()){
+            CloudFileDownloader downloader = CloudFileDownloadFactory.getCloudFileDownloader();
+            if (downloader!=null) {
+                zipFile = downloader.downloadCustomeScheduleCSVFile(GlobalConstant.CUSTOM_SCHEDULE_FILE_PATH, commitId + ".zip");
+            }else {
+                String path = EngineConfig.readProperty("SimulationBasePath")+commitId+".zip";
+                zipFile = new File(path);
+            }
+        }
+
+        if(zipFile != null) {
+            // unzip file
+            int bytesRead;
+            byte[] dataBuffer = new byte[1024];
+            try(FileInputStream zipFis = new FileInputStream(zipFile);
+                ZipInputStream zipIs = new ZipInputStream(zipFis)){
+                ZipEntry entry = zipIs.getNextEntry();
+                while(entry!=null){
+                    OutputStream outputStream = new FileOutputStream(idfPath+"\\"+entry.getName());
+                    while((bytesRead = zipIs.read(dataBuffer)) != -1) {
+                        outputStream.write(dataBuffer, 0, bytesRead);
+                    }
+                    outputStream.flush();
+                    outputStream.close();
+
+                    entry = zipIs.getNextEntry();
+                }
+            }catch (IOException ex){
+                LOG.error(ex.getMessage(), ex);
             }
         }
         return null;
@@ -202,13 +233,24 @@ public class TaskRunner implements Runnable {
         String requestId = jo.get("request_id").getAsString();
         String branchKey = jo.get("sim_branch_key").getAsString();
 
+        String commitId = "";
+        if(jo.has("commit_id")){
+            commitId = jo.get("commit_id").getAsString();
+        }
+
         boolean expandObjects = false;
         if(jo.has("expand_objects")){
             expandObjects = jo.get("expand_objects").getAsBoolean();
         }
+
         boolean outputESO = true;
         if(jo.has("output_eso")){
             outputESO = jo.get("output_eso").getAsString().equalsIgnoreCase("yes");
+        }
+
+        boolean hasScheduleCSV = false;
+        if(jo.has("customize_csv")){
+            hasScheduleCSV = jo.get("customize_csv").getAsBoolean();
         }
 
         String energyPlusPath = FileUtil.getEnergyPlusPath(version);
@@ -253,8 +295,13 @@ public class TaskRunner implements Runnable {
             /** create tmp file to save E+ output */
             File eplusOutput = new File(simBasePath + newFolder + "\\EPlus.out");
 
+            /** if there is external schedule CSV, download and unzip them */
+            if(hasScheduleCSV){
+                downLoadCustomScheduleCSVFile(commitId, path);
+            }
+
             String[] commandline;
-            if(checkVersion(version, "8.5")){
+            if(!expandObjects && checkVersion(version, "8.5")){
                 commandline = expandObjects
                         ? new String[]{energyPlusPath+"energyplus.exe", "-x", "-w", "weatherfile.epw", "IDF.idf"}
                         : new String[]{energyPlusPath+"energyplus.exe", "-w", "weatherfile.epw", "IDF.idf"};

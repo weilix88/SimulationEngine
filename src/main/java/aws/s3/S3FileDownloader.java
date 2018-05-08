@@ -44,6 +44,12 @@ public class S3FileDownloader extends SDKEndPoint implements CloudFileDownloader
     	String bucketName = EngineConfig.readProperty("CustomWeatherFileCloud");
         return downloadFile(bucketName, pathToFolder, fileName);
     }
+
+    @Override
+    public File downloadCustomeScheduleCSVFile(String pathToFolder, String fileName){
+        String bucketName = EngineConfig.readProperty("CustomScheduleFileCloud");
+        return downloadFile(bucketName, pathToFolder, fileName);
+    }
     
     @Override
     public File downloadWeatherFile(String pathToFolder, String fileName){
