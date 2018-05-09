@@ -1,16 +1,11 @@
 package main.java.util;
 
-import java.io.BufferedReader;
-import java.io.BufferedWriter;
-import java.io.ByteArrayOutputStream;
-import java.io.File;
-import java.io.FileInputStream;
-import java.io.FileWriter;
-import java.io.IOException;
-import java.io.InputStreamReader;
+import java.io.*;
 import java.util.Base64;
 import java.util.Iterator;
 import java.util.zip.GZIPOutputStream;
+import java.util.zip.ZipEntry;
+import java.util.zip.ZipOutputStream;
 
 import org.jsoup.nodes.Document;
 import org.jsoup.nodes.Element;
@@ -71,6 +66,30 @@ public class FileUtil {
             sb.append("Encounter Error While Retrieving Content: "+e.getMessage()+System.lineSeparator());
         }
         return sb.toString();
+    }
+
+    public static File compressFile(String zipFilePath, String filePath){
+        File zipFile = new File(zipFilePath);
+
+        byte[] b = new byte[1024];
+        int count;
+        try (FileOutputStream fos = new FileOutputStream(zipFile);
+             ZipOutputStream ous = new ZipOutputStream(fos)) {
+            File file = new File(filePath);
+            ous.putNextEntry(new ZipEntry(file.getName()));
+
+            try (FileInputStream fis = new FileInputStream(file)) {
+                while ((count = fis.read(b)) > 0) {
+                    ous.write(b, 0, count);
+                }
+                ous.flush();
+            }
+        } catch (IOException e) {
+            LOG.error(e.getMessage(), e);
+            zipFile = null;
+        }
+
+        return zipFile;
     }
 
     public static byte[] compressString(String raw){

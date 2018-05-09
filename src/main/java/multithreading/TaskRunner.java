@@ -11,6 +11,8 @@ import java.util.List;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipInputStream;
 
+import com.microsoft.azure.storage.file.CloudFile;
+import main.java.cloud.*;
 import org.apache.commons.io.FileUtils;
 import org.jsoup.Jsoup;
 import org.jsoup.nodes.Document;
@@ -22,13 +24,6 @@ import org.slf4j.LoggerFactory;
 import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
 
-import main.java.cloud.CloudFileDownloadFactory;
-import main.java.cloud.CloudFileDownloader;
-import main.java.cloud.GlobalConstant;
-import main.java.cloud.InstanceInfo;
-import main.java.cloud.PathUtil;
-import main.java.cloud.RedisAccess;
-import main.java.cloud.RedisAccessFactory;
 import main.java.config.EngineConfig;
 import main.java.util.FileUtil;
 import main.java.util.RandomUtil;
@@ -238,6 +233,11 @@ public class TaskRunner implements Runnable {
             commitId = jo.get("commit_id").getAsString();
         }
 
+        String parallelAgent = "";
+        if(jo.has("parallel_agent")){
+            parallelAgent = jo.get("parallel_agent").getAsString();
+        }
+
         boolean expandObjects = false;
         if(jo.has("expand_objects")){
             expandObjects = jo.get("expand_objects").getAsBoolean();
@@ -350,7 +350,6 @@ public class TaskRunner implements Runnable {
                         access.set("Taskhtml#" + requestId, "");
                         access.set("Taskerr#" + requestId, "");
                         access.set("Taskcsv#" + requestId, "");
-                        access.set("Taskeso#" + requestId, "");
                         access.set("Taskmtr#" + requestId, "");
                         access.set("Taskeio#" + requestId, "");
                         access.set("Taskrdd#" + requestId, "");
@@ -421,7 +420,10 @@ public class TaskRunner implements Runnable {
 
                         access.set("Taskerr#" + requestId, readCompressedBase64String(path + files[1]));
                         access.set("Taskcsv#" + requestId, readCompressedBase64String(path + files[2]));
-                        access.set("Taskeso#" + requestId, outputESO ? readCompressedBase64String(path + files[3]) : "");
+                        //access.set("Taskeso#" + requestId, outputESO ? readCompressedBase64String(path + files[3]) : "");
+                        if(outputESO){
+                            saveLargeResultToFileStorage(commitId, path, "eso"+parallelAgent, path+files[3]);
+                        }
                         access.set("Taskmtr#" + requestId, readCompressedBase64String(path + files[4]));
                         access.set("Taskeio#" + requestId, readCompressedBase64String(path + files[5]));
                         access.set("Taskrdd#" + requestId, readCompressedBase64String(path + files[6]));
@@ -517,6 +519,21 @@ public class TaskRunner implements Runnable {
             }
         }
         return result;
+    }
+
+    private void saveLargeResultToFileStorage(String commitId, String folderPath, String type, String filePath){
+        String compressedFilePath = folderPath+type+".zip";
+        File compressed = FileUtil.compressFile(compressedFilePath, filePath);
+
+        if(compressed==null){
+            LOG.error("Compress "+filePath+" failed");
+            return;
+        }
+
+        // save to file storage
+        CloudFileUploader uploader = CloudFileUploaderFactory.getCloudFileUploader();
+        uploader.createFolder(EngineConfig.readProperty("LargeSimResultFileSave"), commitId);
+        uploader.upload(EngineConfig.readProperty("LargeSimResultFileSave"), commitId, compressed, compressed.getName());
     }
 }
 
