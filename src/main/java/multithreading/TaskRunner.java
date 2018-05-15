@@ -13,6 +13,7 @@ import java.util.zip.ZipInputStream;
 
 import com.microsoft.azure.storage.file.CloudFile;
 import main.java.cloud.*;
+import main.java.util.StringUtil;
 import org.apache.commons.io.FileUtils;
 import org.jsoup.Jsoup;
 import org.jsoup.nodes.Document;
@@ -421,7 +422,7 @@ public class TaskRunner implements Runnable {
                         access.set("Taskerr#" + requestId, readCompressedBase64String(path + files[1]));
                         access.set("Taskcsv#" + requestId, readCompressedBase64String(path + files[2]));
                         //access.set("Taskeso#" + requestId, outputESO ? readCompressedBase64String(path + files[3]) : "");
-                        if(outputESO){
+                        if(outputESO && !StringUtil.isNullOrEmpty(files[3])){
                             saveLargeResultToFileStorage(commitId, path, "eso"+parallelAgent, path+files[3]);
                         }
                         access.set("Taskmtr#" + requestId, readCompressedBase64String(path + files[4]));
