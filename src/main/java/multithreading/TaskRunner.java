@@ -534,7 +534,7 @@ public class TaskRunner implements Runnable {
         // save to file storage
         CloudFileUploader uploader = CloudFileUploaderFactory.getCloudFileUploader();
         uploader.createFolder(EngineConfig.readProperty("LargeSimResultFileSave"), commitId);
-        uploader.upload(EngineConfig.readProperty("LargeSimResultFileSave"), commitId, compressed, compressed.getName());
+        uploader.upload(EngineConfig.readProperty("LargeSimResultFileSave"), commitId+"/", compressed, compressed.getName());
     }
 }
 
