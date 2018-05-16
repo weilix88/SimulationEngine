@@ -135,15 +135,15 @@ public class TaskRunner implements Runnable {
         return null;
     }
 
-    private String downLoadCustomScheduleCSVFile(String commitId, String idfPath) {
+    private String downLoadCustomScheduleCSVFile(String branchKey, String idfPath) {
         File zipFile = null;
 
-        if(commitId!=null && !commitId.isEmpty()){
+        if(branchKey!=null && !branchKey.isEmpty()){
             CloudFileDownloader downloader = CloudFileDownloadFactory.getCloudFileDownloader();
             if (downloader!=null) {
-                zipFile = downloader.downloadCustomeScheduleCSVFile(GlobalConstant.CUSTOM_SCHEDULE_FILE_PATH, commitId + ".zip");
+                zipFile = downloader.downloadCustomeScheduleCSVFile(GlobalConstant.CUSTOM_SCHEDULE_FILE_PATH, branchKey + ".zip");
             }else {
-                String path = EngineConfig.readProperty("SimulationBasePath")+commitId+".zip";
+                String path = EngineConfig.readProperty("SimulationBasePath")+branchKey+".zip";
                 zipFile = new File(path);
             }
         }
@@ -298,7 +298,7 @@ public class TaskRunner implements Runnable {
 
             /** if there is external schedule CSV, download and unzip them */
             if(hasScheduleCSV){
-                downLoadCustomScheduleCSVFile(commitId, path);
+                downLoadCustomScheduleCSVFile(branchKey, path);
             }
 
             String[] commandline;
