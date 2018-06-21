@@ -280,6 +280,7 @@ public class TaskRunner implements Runnable {
         StatusReporter.sendLog(commitId, parallelAgent, "Task runner copied batch file: " + batchPath, "log");
 
         if (batchPath == null) {
+            StatusReporter.sendLog(commitId, parallelAgent, "Cannot create simulation batch file", "severe_error");
             return;
         }
 
@@ -287,6 +288,7 @@ public class TaskRunner implements Runnable {
         StatusReporter.sendLog(commitId, parallelAgent, "Weather file " + weatherFileFlag, "log");
 
         if (weatherFileFlag == null) {
+            StatusReporter.sendLog(commitId, parallelAgent, "Weather file cannot found: " + weatherFileFlag, "severe_error");
             return;
         }
 
