@@ -237,6 +237,7 @@ public class TaskRunner implements Runnable {
         }
 
         StatusReporter.sendLog(commitId, parallelAgent, "Task runner starts to run " + requestId, "log");
+        StatusReporter.sendLog(commitId, parallelAgent, "Running simulation: "+SimulationManager.INSTANCE.getRunningSimulation(), "log");
 
         boolean expandObjects = false;
         if (jo.has("expand_objects")) {
@@ -456,8 +457,6 @@ public class TaskRunner implements Runnable {
                 access.del("TaskServerIP#" + requestId);
 
                 FileUtils.deleteDirectory(new File(path));
-
-                StatusReporter.sendStatus(commitId, parallelAgent, "finished", "finished");
             } else {
                 access.rpush("TaskStatus#" + requestId, "Status_ERROR");
                 access.set("TaskErrorMessage#" + requestId, "Simulation output stream not captured");
@@ -484,6 +483,8 @@ public class TaskRunner implements Runnable {
              */
             SimulationManager.INSTANCE.finishSimulation(requestId);
 
+            StatusReporter.sendLog(commitId, parallelAgent, "Running simulation: "+SimulationManager.INSTANCE.getRunningSimulation(), "log");
+            StatusReporter.sendStatus(commitId, parallelAgent, "finished", "finished");
             /**
              * try to run next simulation
              */
