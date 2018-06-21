@@ -22,7 +22,7 @@ public class StatusReporter {
         String watchDogURL = EngineConfig.readProperty("WatchDogURL");
 
         HttpClient sender = new HttpClient();
-        sender.setup(watchDogURL + "SimErrorCollector");
+        sender.setup(watchDogURL + "SimLogCollector");
         sender.addParameter("commit_id", commitId);
         sender.addParameter("agent", parallelAgent);
         sender.addParameter("timestamp", String.valueOf(System.currentTimeMillis()));
