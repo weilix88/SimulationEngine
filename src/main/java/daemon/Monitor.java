@@ -27,6 +27,7 @@ import com.microsoft.rest.LogLevel;
 
 import main.java.cloud.InstanceInfo;
 import main.java.config.EngineConfig;
+import main.java.httpClientConnect.StatusReporter;
 import main.java.multithreading.SimEngine;
 import main.java.multithreading.SimulationManager;
 
@@ -110,6 +111,8 @@ public class Monitor implements Runnable {
                     			}
                     			
                     			LOG.info("Running instance in VMSS: "+running);
+                    			StatusReporter.sendDaemonStatus("Running instance in VMSS: "+running, "log");
+                    			
                     			int minNum = Integer.parseInt(EngineConfig.readProperty("AusoscalingMinInstance"));
                     			if(running>minNum){
                     				// shutdown itself
@@ -119,14 +122,18 @@ public class Monitor implements Runnable {
                     				for(VirtualMachine vm : vms){
                     					if(vm.name().equalsIgnoreCase(vmName)){
                     						LOG.info("Shutting down itself");
+                    						StatusReporter.sendDaemonStatus("Shutting down itself", "log");
                     						
                     						vm.deallocate();
+                    						
+                    						StatusReporter.sendDaemonStatus("Shuted down itself", "log");
                     						break;
                     					}
                     				}
                     			}			
-                    		} catch (CloudException | IOException e) {
+                    		} catch (Throwable e) {
                     			LOG.error(e.getMessage(), e);
+                    			StatusReporter.sendDaemonStatus(e.getMessage(), "error");
                     		}
                     	}
                     }
@@ -134,7 +141,7 @@ public class Monitor implements Runnable {
             }
 
             try {
-                Thread.sleep(5 * 60 * 1000);
+                Thread.sleep(30 * 60 * 1000);
             } catch (InterruptedException e) {
             }
         }
