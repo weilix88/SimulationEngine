@@ -20,12 +20,20 @@ public class AzureFileUploader implements CloudFileUploader {
 
     @Override
     public JsonObject upload(String bucketName, String path, File file, String fileName) {
+        JsonObject ret = new JsonObject();
+
         if (file != null) {
-            AzureFileUtil.uploadFile(bucketName, path, file, fileName);
+            if(AzureFileUtil.uploadFile(bucketName, path, file, fileName)){
+                ret.addProperty("status", "success");
+            }else {
+                ret.addProperty("status", "error");
+                ret.addProperty("error_msg", "Upload file failed");
+            }
+        }else {
+            ret.addProperty("status", "error");
+            ret.addProperty("error_msg", "Upload file is null");
         }
 
-        JsonObject ret = new JsonObject();
-        ret.addProperty("status", "success");
         return ret;
     }
 }

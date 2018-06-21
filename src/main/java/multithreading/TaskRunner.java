@@ -12,7 +12,9 @@ import java.util.zip.ZipEntry;
 import java.util.zip.ZipInputStream;
 
 import com.microsoft.azure.storage.file.CloudFile;
+import main.java.azure.fileStorage.AzureFileUploader;
 import main.java.cloud.*;
+import main.java.httpClientConnect.HttpClient;
 import main.java.util.StringUtil;
 import org.apache.commons.io.FileUtils;
 import org.jsoup.Jsoup;
@@ -312,6 +314,8 @@ public class TaskRunner implements Runnable {
 
             BufferedReader stdInput = null;
             try {
+                String watchDogURL = EngineConfig.readProperty("WatchDogURL");
+
                 this.access = RedisAccessFactory.getAccess();
                 access.rpush("TaskStatus#" + requestId, "Starting");
                 access.expire("TaskStatus#" + requestId);
@@ -339,8 +343,28 @@ public class TaskRunner implements Runnable {
                         }
 
                         access.rpush("TaskStatus#" + requestId, s + "<br/>");
-                        FileUtil.appendToFile(eplusOutput, System.currentTimeMillis()+" === "+s);
+                        //FileUtil.appendToFile(eplusOutput, System.currentTimeMillis()+" === "+s);
+
+                        HttpClient sender = new HttpClient();
+                        sender.setup(watchDogURL + "SimStatusCollector");
+                        sender.addParameter("commit_id", commitId);
+                        sender.addParameter("agent", parallelAgent);
+                        sender.addParameter("timestamp", String.valueOf(System.currentTimeMillis()));
+                        sender.addParameter("url", InstanceInfo.getPublicIP());
+                        sender.addParameter("status", s);
+                        sender.addParameter("result", "Runing");
+                        sender.send(true);
                     }
+
+                    HttpClient sender = new HttpClient();
+                    sender.setup(watchDogURL + "SimStatusCollector");
+                    sender.addParameter("commit_id", commitId);
+                    sender.addParameter("agent", parallelAgent);
+                    sender.addParameter("timestamp", String.valueOf(System.currentTimeMillis()));
+                    sender.addParameter("url", InstanceInfo.getPublicIP());
+                    sender.addParameter("status", "finished");
+                    sender.addParameter("result", "finished");
+                    sender.send(true);
 
                     String tryCancelled = access.get("TaskCancelled#" + requestId);
                     if (tryCancelled != null && tryCancelled.equalsIgnoreCase("true")) {
@@ -532,8 +556,10 @@ public class TaskRunner implements Runnable {
         }
 
         // save to file storage
-        CloudFileUploader uploader = CloudFileUploaderFactory.getCloudFileUploader();
-        uploader.createFolder(EngineConfig.readProperty("LargeSimResultFileSave"), commitId);
+        CloudFileUploader uploader = new AzureFileUploader();
+        if(!EngineConfig.readProperty("platform").equals("azure")) {
+            uploader.createFolder(EngineConfig.readProperty("LargeSimResultFileSave"), commitId);
+        }
         uploader.upload(EngineConfig.readProperty("LargeSimResultFileSave"), commitId+"/", compressed, compressed.getName());
     }
 }
