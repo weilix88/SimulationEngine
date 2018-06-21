@@ -461,10 +461,10 @@ public class TaskRunner implements Runnable {
                 access.rpush("TaskStatus#" + requestId, "Status_ERROR");
                 access.set("TaskErrorMessage#" + requestId, "Simulation output stream not captured");
 
-                StatusReporter.sendLog(commitId, parallelAgent, "Simulation output stream not captured", "error");
+                StatusReporter.sendLog(commitId, parallelAgent, "Simulation output stream not captured", "severe_error");
             }
-        } catch (Exception e) {
-            StatusReporter.sendLog(commitId, parallelAgent, "Run simulation encounters exception: " + e.getMessage(), "error");
+        } catch (Throwable e) {
+            StatusReporter.sendLog(commitId, parallelAgent, "Run simulation encounters exception: " + e.getMessage(), "severe_error");
         } finally {
             try {
                 this.access.close();
