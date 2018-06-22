@@ -75,9 +75,7 @@ public class HttpClient {
         if (closeAfter) {
             try {
                 client.close();
-            } catch (IOException e) {
-                LOG.error(e.getMessage(), e);
-            }
+            } catch (IOException e) {}
         }
 
         return content;

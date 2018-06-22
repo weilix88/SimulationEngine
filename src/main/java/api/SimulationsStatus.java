@@ -24,12 +24,12 @@ public class SimulationsStatus extends HttpServlet {
     }
 
     protected void doGet(HttpServletRequest request, HttpServletResponse response) throws ServletException, IOException {
-        List<String> pids = ProcessUtil.getPIDs();
+        //List<String> pids = ProcessUtil.getPIDs();
 
-        Map<String, String> reqIdToPID = SimulationManager.INSTANCE.getReqIdToPIDMap();
+        //Map<String, String> reqIdToPID = SimulationManager.INSTANCE.getReqIdToPIDMap();
 
         JsonArray ja = new JsonArray();
-        for(String reqId : reqIdToPID.keySet()){
+        /*for(String reqId : reqIdToPID.keySet()){
             JsonObject jo = new JsonObject();
             jo.addProperty("req_id", reqId);
 
@@ -50,7 +50,7 @@ public class SimulationsStatus extends HttpServlet {
             jo.addProperty("pid", pid);
 
             ja.add(jo);
-        }
+        }*/
 
         ServletUtil.returnJsonResult(response, ja);
     }

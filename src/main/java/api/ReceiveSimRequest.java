@@ -28,7 +28,6 @@ public class ReceiveSimRequest extends HttpServlet{
 
     @Override
     protected void doPost(HttpServletRequest req, HttpServletResponse resp) throws ServletException, IOException {
-    	LOG.info("Sim request receiver receives request");
         SimEngine.wakeSimEngine();
         /*req.setCharacterEncoding("utf-8");
         

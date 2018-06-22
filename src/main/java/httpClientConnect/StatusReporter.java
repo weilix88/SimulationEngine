@@ -43,4 +43,16 @@ public class StatusReporter {
         sender.addParameter("type", type);
         sender.send(true);
     }
+
+    public static void sendEngineLog(String msg, String type){
+        String watchDogURL = EngineConfig.readProperty("WatchDogURL");
+
+        HttpClient sender = new HttpClient();
+        sender.setup(watchDogURL + "EngineInfoCollector");
+        sender.addParameter("timestamp", String.valueOf(System.currentTimeMillis()));
+        sender.addParameter("url", InstanceInfo.getPublicIP());
+        sender.addParameter("msg", msg);
+        sender.addParameter("type", type);
+        sender.send(true);
+    }
 }

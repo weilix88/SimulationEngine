@@ -220,110 +220,167 @@ public class TaskRunner implements Runnable {
 
     @Override
     public void run() {
-        /** read data */
-        String version = jo.get("version").getAsString();
-        String weatherFile = jo.get("weather_file").getAsString();
-        String requestId = jo.get("request_id").getAsString();
-        String branchKey = jo.get("sim_branch_key").getAsString();
-
+        String weatherFile = "";
+        String branchKey = "";
         String commitId = "";
-        if (jo.has("commit_id")) {
-            commitId = jo.get("commit_id").getAsString();
-        }
-
         String parallelAgent = "";
-        if (jo.has("parallel_agent")) {
-            parallelAgent = jo.get("parallel_agent").getAsString();
-        }
-
-        StatusReporter.sendLog(commitId, parallelAgent, "Task runner starts to run " + requestId, "log");
-        StatusReporter.sendLog(commitId, parallelAgent, "Running simulation: "+SimulationManager.INSTANCE.getRunningSimulation(), "log");
+        String simBasePath = "";
+        String newFolder = "";
+        String version = "";
+        String requestId = "";
+        String energyPlusPath = "";
 
         boolean expandObjects = false;
-        if (jo.has("expand_objects")) {
-            expandObjects = jo.get("expand_objects").getAsBoolean();
-        }
-
         boolean outputESO = true;
-        if (jo.has("output_eso")) {
-            outputESO = jo.get("output_eso").getAsString().equalsIgnoreCase("yes");
-        }
-
         boolean hasScheduleCSV = false;
-        if (jo.has("customize_csv")) {
-            hasScheduleCSV = jo.get("customize_csv").getAsBoolean();
-        }
 
-        StatusReporter.sendLog(commitId, parallelAgent, "Expand: " + expandObjects + ", eso: " + outputESO + ", csv: " + hasScheduleCSV, "log");
+        File folder = null;
 
-        String energyPlusPath = FileUtil.getEnergyPlusPath(version);
+        try {
+            /** read data */
+            version = jo.get("version").getAsString();
+            weatherFile = jo.get("weather_file").getAsString();
+            requestId = jo.get("request_id").getAsString();
+            branchKey = jo.get("sim_branch_key").getAsString();
 
-        /** create work directory */
-        String simBasePath = EngineConfig.readProperty("SimulationBasePath");
-        String newFolder = RandomUtil.genRandomStr();
-        File folder = new File(simBasePath + newFolder);
-        if (folder.exists()) {
-            try {
-                FileUtils.cleanDirectory(folder);
-            } catch (IOException e) {
-                StatusReporter.sendLog(commitId, parallelAgent, "Create work dir failed: " + e.getMessage(), "error");
+            if (jo.has("commit_id")) {
+                commitId = jo.get("commit_id").getAsString();
             }
-        } else {
-            folder.mkdirs();
-        }
 
-        StatusReporter.sendLog(commitId, parallelAgent, "Sim request receiver built working directory: " + simBasePath + newFolder, "log");
+            if (jo.has("parallel_agent")) {
+                parallelAgent = jo.get("parallel_agent").getAsString();
+            }
 
-        String path = simBasePath + newFolder + "\\";
-        String batchPath = createEnergyPlusBatchFile(version, path, energyPlusPath);
+            StatusReporter.sendLog(commitId, parallelAgent, "Task runner starts to run " + requestId, "log");
+            StatusReporter.sendLog(commitId, parallelAgent, "Running simulation: " + SimulationManager.INSTANCE.getRunningSimulation(), "log");
 
-        StatusReporter.sendLog(commitId, parallelAgent, "Task runner copied batch file: " + batchPath, "log");
+            if (jo.has("expand_objects")) {
+                expandObjects = jo.get("expand_objects").getAsBoolean();
+            }
 
-        if (batchPath == null) {
-            StatusReporter.sendLog(commitId, parallelAgent, "Cannot create simulation batch file", "severe_error");
+            if (jo.has("output_eso")) {
+                outputESO = jo.get("output_eso").getAsString().equalsIgnoreCase("yes");
+            }
+
+            if (jo.has("customize_csv")) {
+                hasScheduleCSV = jo.get("customize_csv").getAsBoolean();
+            }
+
+            StatusReporter.sendLog(commitId, parallelAgent, "Expand: " + expandObjects + ", eso: " + outputESO + ", csv: " + hasScheduleCSV, "log");
+
+            energyPlusPath = FileUtil.getEnergyPlusPath(version);
+
+            /** create work directory */
+            simBasePath = EngineConfig.readProperty("SimulationBasePath");
+            newFolder = RandomUtil.genRandomStr();
+            folder = new File(simBasePath + newFolder);
+            if (folder.exists()) {
+                try {
+                    FileUtils.cleanDirectory(folder);
+                } catch (IOException e) {
+                    StatusReporter.sendLog(commitId, parallelAgent, "Create work dir failed: " + e.getMessage(), "error");
+                }
+            } else {
+                folder.mkdirs();
+            }
+        }catch (Throwable e){
+            StatusReporter.sendLog(commitId, parallelAgent, "Init simulation folder failed: " + e.getMessage(), "error");
+
+            /**
+             * clean up request id, PID records
+             */
+            SimulationManager.INSTANCE.finishSimulation(requestId);
+            StatusReporter.sendStatus(commitId, parallelAgent, "finished", "finished");
+
+            if(folder!=null){
+                try {
+                    folder.delete();
+                }catch(Exception ex){}
+            }
+
+            /**
+             * try to run next simulation
+             */
+            SimEngine.wakeSimEngine();
+
             return;
         }
 
-        String weatherFileFlag = copyWeatherFile(weatherFile, branchKey, path);
-        StatusReporter.sendLog(commitId, parallelAgent, "Weather file " + weatherFileFlag, "log");
 
-        if (weatherFileFlag == null) {
-            StatusReporter.sendLog(commitId, parallelAgent, "Weather file cannot found: " + weatherFileFlag, "severe_error");
+        String[] commandline = null;
+        String path = null;
+        try {
+            StatusReporter.sendLog(commitId, parallelAgent, "Sim request receiver built working directory: " + simBasePath + newFolder, "log");
+
+            path = simBasePath + newFolder + "\\";
+            String batchPath = createEnergyPlusBatchFile(version, path, energyPlusPath);
+
+            StatusReporter.sendLog(commitId, parallelAgent, "Task runner copied batch file: " + batchPath, "log");
+
+            if (batchPath == null) {
+                StatusReporter.sendLog(commitId, parallelAgent, "Cannot create simulation batch file", "severe_error");
+                return;
+            }
+
+            String weatherFileFlag = copyWeatherFile(weatherFile, branchKey, path);
+            StatusReporter.sendLog(commitId, parallelAgent, "Weather file " + weatherFileFlag, "log");
+
+            if (weatherFileFlag == null) {
+                StatusReporter.sendLog(commitId, parallelAgent, "Weather file cannot found: " + weatherFileFlag, "severe_error");
+                return;
+            }
+
+            downloadCSV(path, jo.get("csvs").getAsJsonArray(), jo.get("s3_bucket").getAsString());
+            StatusReporter.sendLog(commitId, parallelAgent, "Task runner downloaded CSV files", "log");
+
+            /** create IDF file and write content to it */
+            File idfFile = new File(path + "IDF.idf");
+            String idfContent = jo.get("idf_content").getAsString();
+            try (FileWriter fw = new FileWriter(idfFile);
+                 BufferedWriter bw = new BufferedWriter(fw)) {
+                bw.write(idfContent);
+                bw.flush();
+            } catch (IOException e) {
+                StatusReporter.sendLog(commitId, parallelAgent, "Write IDF failed: " + e.getMessage(), "error");
+            }
+            StatusReporter.sendLog(commitId, parallelAgent, "Sim request receiver copied request IDF into working directory", "log");
+
+            /** create tmp file to save E+ output */
+            //File eplusOutput = new File(simBasePath + newFolder + "\\EPlus.out");
+
+            /** if there is external schedule CSV, download and unzip them */
+            if (hasScheduleCSV) {
+                downLoadCustomScheduleCSVFile(branchKey, path);
+            }
+
+            StatusReporter.sendLog(commitId, parallelAgent, "Building command line", "log");
+
+            if (!expandObjects && checkVersion(version, "8.5")) {
+                commandline = expandObjects
+                        ? new String[]{energyPlusPath + "energyplus.exe", "-x", "-w", "weatherfile.epw", "IDF.idf"}
+                        : new String[]{energyPlusPath + "energyplus.exe", "-w", "weatherfile.epw", "IDF.idf"};
+            } else {
+                commandline = new String[]{batchPath, path + "IDF", "weatherfile"};
+            }
+        }catch(Throwable e){
+            StatusReporter.sendLog(commitId, parallelAgent, "Prepare simulation failed: " + e.getMessage(), "error");
+
+            /**
+             * clean up request id, PID records
+             */
+            SimulationManager.INSTANCE.finishSimulation(requestId);
+            StatusReporter.sendStatus(commitId, parallelAgent, "finished", "finished");
+
+            try {
+                folder.delete();
+            }catch(Exception ex){}
+
+            /**
+             * try to run next simulation
+             */
+            SimEngine.wakeSimEngine();
+
             return;
-        }
-
-        downloadCSV(path, jo.get("csvs").getAsJsonArray(), jo.get("s3_bucket").getAsString());
-        StatusReporter.sendLog(commitId, parallelAgent, "Task runner downloaded CSV files", "log");
-
-        /** create IDF file and write content to it */
-        File idfFile = new File(path + "IDF.idf");
-        String idfContent = jo.get("idf_content").getAsString();
-        try (FileWriter fw = new FileWriter(idfFile);
-             BufferedWriter bw = new BufferedWriter(fw)) {
-            bw.write(idfContent);
-            bw.flush();
-        } catch (IOException e) {
-            StatusReporter.sendLog(commitId, parallelAgent, "Write IDF failed: " + e.getMessage(), "error");
-        }
-        StatusReporter.sendLog(commitId, parallelAgent, "Sim request receiver copied request IDF into working directory", "log");
-
-        /** create tmp file to save E+ output */
-        //File eplusOutput = new File(simBasePath + newFolder + "\\EPlus.out");
-
-        /** if there is external schedule CSV, download and unzip them */
-        if (hasScheduleCSV) {
-            downLoadCustomScheduleCSVFile(branchKey, path);
-        }
-
-        StatusReporter.sendLog(commitId, parallelAgent, "Building command line", "log");
-
-        String[] commandline;
-        if (!expandObjects && checkVersion(version, "8.5")) {
-            commandline = expandObjects
-                    ? new String[]{energyPlusPath + "energyplus.exe", "-x", "-w", "weatherfile.epw", "IDF.idf"}
-                    : new String[]{energyPlusPath + "energyplus.exe", "-w", "weatherfile.epw", "IDF.idf"};
-        } else {
-            commandline = new String[]{batchPath, path + "IDF", "weatherfile"};
         }
 
         BufferedReader stdInput = null;

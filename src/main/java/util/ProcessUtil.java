@@ -14,19 +14,18 @@ public class ProcessUtil {
             try {
                 Process pr = Runtime.getRuntime().exec("tasklist /fi \"imagename eq energyplus.exe\"");
                 try (BufferedReader stdInput = new BufferedReader(new InputStreamReader(pr.getInputStream()))) {
-                    stdInput.readLine();
-                    stdInput.readLine();
-                    stdInput.readLine();
+                    if(stdInput.readLine() != null
+                        && stdInput.readLine() != null
+                        && stdInput.readLine() != null){
 
-                    String s;
-                    while ((s = stdInput.readLine()) != null) {
-                        String[] split = s.split("\\s+");
-                        res.add(split[1]);
+                        String s;
+                        while ((s = stdInput.readLine()) != null) {
+                            String[] split = s.split("\\s+");
+                            res.add(split[1]);
+                        }
                     }
                 }
-            } catch (IOException e) {
-                e.printStackTrace();
-            }
+            } catch (IOException e) {}
             return res;
         }
     }

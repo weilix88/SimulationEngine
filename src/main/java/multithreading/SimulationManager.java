@@ -15,8 +15,8 @@ import org.slf4j.LoggerFactory;
 public enum SimulationManager {
     INSTANCE;
 
-    private static ConcurrentHashMap<String, String> reqIdToPIDMap = new ConcurrentHashMap<>();
-    private static ConcurrentHashMap<String, String> existingPIDs = new ConcurrentHashMap<>();
+    //private static ConcurrentHashMap<String, String> reqIdToPIDMap = new ConcurrentHashMap<>();
+    //private static ConcurrentHashMap<String, String> existingPIDs = new ConcurrentHashMap<>();
 
     private final Logger LOG = LoggerFactory.getLogger(this.getClass());
 
@@ -26,10 +26,10 @@ public enum SimulationManager {
         return counter.get();
     }
 
-    public Map<String, String> getReqIdToPIDMap(){
+    /*public Map<String, String> getReqIdToPIDMap(){
         Map<String, String> res = new HashMap<>(reqIdToPIDMap);
         return res;
-    }
+    }*/
 
     /**
      * Share the Class lock with startSimulation to prevent race condition.
@@ -42,7 +42,7 @@ public enum SimulationManager {
         StartSimulationWrapper wrapper = new StartSimulationWrapper();
 
         //synchronized (SimulationManager.class){
-            String pid = null;
+            //String pid = null;
 
             try {
                 Process pr = Runtime.getRuntime().exec(commandline, null, new File(path));
@@ -106,7 +106,7 @@ public enum SimulationManager {
                 }*/
                 
                 wrapper.process = pr;
-                wrapper.pid = pid;
+                //wrapper.pid = pid;
                 wrapper.stdInput = stdInput;
             } catch (IOException e) {
                 LOG.error(e.getMessage(), e);
@@ -125,14 +125,15 @@ public enum SimulationManager {
      */
     public void finishSimulation(String reqId){
         synchronized (SimulationManager.class){
-            String pid = reqIdToPIDMap.remove(reqId);
+            /*String pid = reqIdToPIDMap.remove(reqId);
             if(pid!=null){
                 existingPIDs.remove(pid);
                 LOG.info("Finish simulation found PID");
             }else {
                 LOG.info("Finish simulation NOT found PID");
-            }
-            LOG.info("Simulation counter decremented: "+counter.decrementAndGet());
+            }*/
+            counter.decrementAndGet();
+            //LOG.info("Simulation counter decremented: "+counter.decrementAndGet());
         }
     }
 
@@ -140,7 +141,7 @@ public enum SimulationManager {
         return counter.get();
     }
 
-    public boolean cancelSimulation(String reqId){
+    /*public boolean cancelSimulation(String reqId){
         synchronized (SimulationManager.class){
             String pid = reqIdToPIDMap.remove(reqId);
             if(pid!=null){
@@ -161,5 +162,5 @@ public enum SimulationManager {
             }
             return false;
         }
-    }
+    }*/
 }
