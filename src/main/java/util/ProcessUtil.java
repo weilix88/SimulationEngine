@@ -2,6 +2,7 @@ package main.java.util;
 
 import java.io.BufferedReader;
 import java.io.IOException;
+import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.util.ArrayList;
 import java.util.List;
@@ -13,7 +14,9 @@ public class ProcessUtil {
             List<String> res = new ArrayList<>();
             try {
                 Process pr = Runtime.getRuntime().exec("tasklist /fi \"imagename eq energyplus.exe\"");
-                try (BufferedReader stdInput = new BufferedReader(new InputStreamReader(pr.getInputStream()))) {
+                try (InputStream is = pr.getInputStream();
+                     InputStreamReader isr = new InputStreamReader(is);
+                     BufferedReader stdInput = new BufferedReader(isr)) {
                     if(stdInput.readLine() != null
                         && stdInput.readLine() != null
                         && stdInput.readLine() != null){

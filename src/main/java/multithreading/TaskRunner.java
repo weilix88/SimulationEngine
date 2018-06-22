@@ -7,6 +7,7 @@ import main.java.cloud.*;
 import main.java.config.EngineConfig;
 import main.java.httpClientConnect.StatusReporter;
 import main.java.util.FileUtil;
+import main.java.util.ProcessUtil;
 import main.java.util.RandomUtil;
 import main.java.util.StringUtil;
 import org.apache.commons.io.FileUtils;
@@ -22,6 +23,7 @@ import java.net.URI;
 import java.net.URISyntaxException;
 import java.util.Base64;
 import java.util.Iterator;
+import java.util.List;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipInputStream;
 
@@ -252,7 +254,9 @@ public class TaskRunner implements Runnable {
             }
 
             StatusReporter.sendLog(commitId, parallelAgent, "Task runner starts to run " + requestId, "log");
-            StatusReporter.sendLog(commitId, parallelAgent, "Running simulation: " + SimulationManager.INSTANCE.getRunningSimulation(), "log");
+
+            List<String> pids = ProcessUtil.getPIDs();
+            StatusReporter.sendLog(commitId, parallelAgent, "Running simulation: " + SimulationManager.INSTANCE.getRunningSimulation() +" vs "+pids.size(), "log");
 
             if (jo.has("expand_objects")) {
                 expandObjects = jo.get("expand_objects").getAsBoolean();
