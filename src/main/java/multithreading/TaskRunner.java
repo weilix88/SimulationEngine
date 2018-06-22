@@ -390,7 +390,7 @@ public class TaskRunner implements Runnable {
             access.expire("TaskStatus#" + requestId);
 
             access.set("TaskServerIP#" + requestId, InstanceInfo.getPublicIP());
-            LOG.info("Simulation server public IP: " + InstanceInfo.getPublicIP());
+            //LOG.info("Simulation server public IP: " + InstanceInfo.getPublicIP());
 
             LOG.info("Task runner going to start simulation " + requestId);
 

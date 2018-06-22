@@ -2,6 +2,7 @@ package main.java.multithreading;
 
 import java.io.IOException;
 import java.util.List;
+import java.util.UUID;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ThreadPoolExecutor;
@@ -28,6 +29,8 @@ public class SimEngine implements Runnable{
 
     private static volatile Monitor monitor = null;
     private static ExecutorService singleExecutor = null;
+
+    public static final String EngineID = UUID.randomUUID().toString();
     
     public static void wakeSimEngine(){
         try {
