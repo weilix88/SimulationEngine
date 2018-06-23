@@ -396,7 +396,7 @@ public class TaskRunner implements Runnable {
             access.set("TaskServerIP#" + requestId, InstanceInfo.getPublicIP());
             //LOG.info("Simulation server public IP: " + InstanceInfo.getPublicIP());
 
-            LOG.info("Task runner going to start simulation " + requestId);
+            LOG.info("Task runner going to start simulation " + commitId +" - " + requestId);
 
             // SimulationManager will start simulation and collect PID one by one
             StartSimulationWrapper wrapper = SimulationManager.INSTANCE.startSimulation(requestId, commandline, path);
