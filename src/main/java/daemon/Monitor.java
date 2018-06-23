@@ -32,7 +32,7 @@ import main.java.multithreading.SimEngine;
 import main.java.multithreading.SimulationManager;
 
 public class Monitor implements Runnable {
-    private static final long THRESHOLD = 20 * 1000;  // 20 minutes
+    private static final long THRESHOLD = 20 * 60 * 1000;  // 20 minutes
     private final Logger LOG = LoggerFactory.getLogger(this.getClass());
     private long idleStart = 0;
 
@@ -63,7 +63,9 @@ public class Monitor implements Runnable {
 
 				if (simulationCounter > 0) {
 					idleStart = 0;
-				}
+				}else if(idleStart==0){
+				    idleStart = System.currentTimeMillis();
+                }
 
 				if (simulationCounter == 0 && idleStart > 0) {
 					if (runingSimulationNum == 0) {
@@ -145,7 +147,7 @@ public class Monitor implements Runnable {
 				}
 
 				try {
-					Thread.sleep(30 * 60 * 1000);
+					Thread.sleep(5 * 60 * 1000);
 				} catch (InterruptedException e) {
 				}
 			}
