@@ -42,8 +42,9 @@ public class TaskRunner implements Runnable {
         this.task = task;
     }*/
 
-    public TaskRunner(JsonObject jo) {
+    public TaskRunner(JsonObject jo, RedisAccess access) {
         this.jo = jo;
+        this.access = access;
     }
 
     /*public Task getTask() {
@@ -222,15 +223,15 @@ public class TaskRunner implements Runnable {
 
     @Override
     public void run() {
-        String weatherFile = "";
-        String branchKey = "";
+        String weatherFile;
+        String branchKey;
         String commitId = "";
         String parallelAgent = "";
-        String simBasePath = "";
-        String newFolder = "";
-        String version = "";
-        String requestId = "";
-        String energyPlusPath = "";
+        String simBasePath;
+        String newFolder;
+        String version;
+        String requestId = null;
+        String energyPlusPath;
 
         boolean expandObjects = false;
         boolean outputESO = true;
@@ -290,6 +291,13 @@ public class TaskRunner implements Runnable {
         }catch (Throwable e){
             StatusReporter.sendLog(commitId, parallelAgent, "Init simulation folder failed: " + e.getMessage(), "error");
 
+            try(StringWriter errors = new StringWriter();
+                PrintWriter pw = new PrintWriter(errors)){
+                e.printStackTrace(pw);
+                StatusReporter.sendLog(commitId, parallelAgent, "Error stack trace: " + errors.toString(), "log");
+            }catch (IOException ex){
+            }
+
             /**
              * clean up request id, PID records
              */
@@ -306,13 +314,15 @@ public class TaskRunner implements Runnable {
              * try to run next simulation
              */
             SimEngine.wakeSimEngine();
-
+            try {
+                this.access.close();
+            } catch (IOException e1) {}
             return;
         }
 
 
-        String[] commandline = null;
-        String path = null;
+        String[] commandline;
+        String path;
         try {
             StatusReporter.sendLog(commitId, parallelAgent, "Sim request receiver built working directory: " + simBasePath + newFolder, "log");
 
@@ -369,6 +379,13 @@ public class TaskRunner implements Runnable {
         }catch(Throwable e){
             StatusReporter.sendLog(commitId, parallelAgent, "Prepare simulation failed: " + e.getMessage(), "error");
 
+            try(StringWriter errors = new StringWriter();
+                PrintWriter pw = new PrintWriter(errors)){
+                e.printStackTrace(pw);
+                StatusReporter.sendLog(commitId, parallelAgent, "Error stack trace: " + errors.toString(), "log");
+            }catch (IOException ex){
+            }
+
             /**
              * clean up request id, PID records
              */
@@ -383,15 +400,15 @@ public class TaskRunner implements Runnable {
              * try to run next simulation
              */
             SimEngine.wakeSimEngine();
-
+            try {
+                this.access.close();
+            } catch (IOException e1) {}
             return;
         }
 
         BufferedReader stdInput = null;
         try {
-            this.access = RedisAccessFactory.getAccess();
             access.rpush("TaskStatus#" + requestId, "Starting");
-            access.expire("TaskStatus#" + requestId);
 
             access.set("TaskServerIP#" + requestId, InstanceInfo.getPublicIP());
             //LOG.info("Simulation server public IP: " + InstanceInfo.getPublicIP());
@@ -528,6 +545,13 @@ public class TaskRunner implements Runnable {
             }
         } catch (Throwable e) {
             StatusReporter.sendLog(commitId, parallelAgent, "Run simulation encounters exception: " + e.getMessage(), "severe_error");
+
+            try(StringWriter errors = new StringWriter();
+                PrintWriter pw = new PrintWriter(errors)){
+                e.printStackTrace(pw);
+                StatusReporter.sendLog(commitId, parallelAgent, "Error stack trace: " + errors.toString(), "log");
+            }catch (IOException ex){
+            }
         } finally {
             try {
                 this.access.close();
@@ -552,6 +576,9 @@ public class TaskRunner implements Runnable {
              * try to run next simulation
              */
             SimEngine.wakeSimEngine();
+            try {
+                this.access.close();
+            } catch (IOException e1) {}
         }
     }
 

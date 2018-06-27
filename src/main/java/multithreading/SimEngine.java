@@ -125,8 +125,14 @@ public class SimEngine implements Runnable{
                         continue;
                     }
 
+                    String requestId = jo.get("request_id").getAsString();
+                    RedisAccess access = RedisAccessFactory.getAccess();
+                    access.rpush("TaskStatus#" + requestId, "Preprocessing");
+                    access.expire("TaskStatus#" + requestId);
+                    LOG.info("Sim engine pushed preprocessing, "+requestId);
+
                     // run simulation
-                    executor.execute(new TaskRunner(jo));
+                    executor.execute(new TaskRunner(jo, access));
                     SimulationManager.counter.incrementAndGet();
                 } else {
                     try {
