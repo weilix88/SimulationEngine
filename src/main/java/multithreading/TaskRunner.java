@@ -289,6 +289,7 @@ public class TaskRunner implements Runnable {
                 folder.mkdirs();
             }
         }catch (Throwable e){
+        	LOG.error("Init simulation folder failed: " + e.getMessage());
             StatusReporter.sendLog(commitId, parallelAgent, "Init simulation folder failed: " + e.getMessage(), "error");
 
             try(StringWriter errors = new StringWriter();
@@ -377,6 +378,7 @@ public class TaskRunner implements Runnable {
                 commandline = new String[]{batchPath, path + "IDF", "weatherfile"};
             }
         }catch(Throwable e){
+        	LOG.error("Prepare simulation failed: " + e.getMessage());
             StatusReporter.sendLog(commitId, parallelAgent, "Prepare simulation failed: " + e.getMessage(), "error");
 
             try(StringWriter errors = new StringWriter();
@@ -474,7 +476,9 @@ public class TaskRunner implements Runnable {
                 }
 
                 String html = FileUtil.readTextFile(path + files[0]);
-                if (html != null && !html.isEmpty()) {
+                if (html == null || html.isEmpty()) {
+                    access.set("Taskhtml#" + requestId, "");
+                } else {
                     Document htmlDoc = Jsoup.parse(html);
                     FileUtil.processHTML(htmlDoc);
 
@@ -505,45 +509,43 @@ public class TaskRunner implements Runnable {
                         }
                     }
 
-                    if (html == null || html.isEmpty()) {
-                        access.set("Taskhtml#" + requestId, "");
-                    } else {
-                        String processedHTML = htmlDoc.outerHtml();
-                        byte[] compressed = FileUtil.compressString(processedHTML);
-                        String base64Encoded = Base64.getEncoder().encodeToString(compressed);
-                        access.set("Taskhtml#" + requestId, base64Encoded);
-                    }
+                  
+                    String processedHTML = htmlDoc.outerHtml();
+                    byte[] compressed = FileUtil.compressString(processedHTML);
+                    String base64Encoded = Base64.getEncoder().encodeToString(compressed);
+                    access.set("Taskhtml#" + requestId, base64Encoded);
 
                     StatusReporter.sendLog(commitId, parallelAgent, "HTML extraction finished", "log");
 
-                    //}
+                 }
 
-                    access.set("Taskerr#" + requestId, readCompressedBase64String(path + files[1]));
-                    access.set("Taskcsv#" + requestId, readCompressedBase64String(path + files[2]));
-                    //access.set("Taskeso#" + requestId, outputESO ? readCompressedBase64String(path + files[3]) : "");
-                    if (outputESO && !StringUtil.isNullOrEmpty(files[3])) {
-                        String msg = saveLargeResultToFileStorage(commitId, path, "eso" + parallelAgent, path + files[3]);
+                access.set("Taskerr#" + requestId, readCompressedBase64String(path + files[1]));
+                access.set("Taskcsv#" + requestId, readCompressedBase64String(path + files[2]));
+                //access.set("Taskeso#" + requestId, outputESO ? readCompressedBase64String(path + files[3]) : "");
+                if (outputESO && !StringUtil.isNullOrEmpty(files[3])) {
+                    String msg = saveLargeResultToFileStorage(commitId, path, "eso" + parallelAgent, path + files[3]);
 
-                        if (!msg.isEmpty()) {
-                            StatusReporter.sendLog(commitId, parallelAgent, "Upload ESO failed: " + msg, "error");
-                        }
+                    if (!msg.isEmpty()) {
+                        StatusReporter.sendLog(commitId, parallelAgent, "Upload ESO failed: " + msg, "error");
                     }
-                    access.set("Taskmtr#" + requestId, readCompressedBase64String(path + files[4]));
-                    access.set("Taskeio#" + requestId, readCompressedBase64String(path + files[5]));
-                    access.set("Taskrdd#" + requestId, readCompressedBase64String(path + files[6]));
                 }
+                access.set("Taskmtr#" + requestId, readCompressedBase64String(path + files[4]));
+                access.set("Taskeio#" + requestId, readCompressedBase64String(path + files[5]));
+                access.set("Taskrdd#" + requestId, readCompressedBase64String(path + files[6]));
 
                 access.rpush("TaskStatus#" + requestId, "Status_FINISHED");
                 access.del("TaskServerIP#" + requestId);
 
-                FileUtils.deleteDirectory(new File(path));
+                //FileUtils.deleteDirectory(new File(path));
             } else {
+            	LOG.info("Simulation output stream not captured");
                 access.rpush("TaskStatus#" + requestId, "Status_ERROR");
                 access.set("TaskErrorMessage#" + requestId, "Simulation output stream not captured");
 
                 StatusReporter.sendLog(commitId, parallelAgent, "Simulation output stream not captured", "severe_error");
             }
         } catch (Throwable e) {
+        	LOG.error("Run simulation encounters exception: " + e.getMessage());
             StatusReporter.sendLog(commitId, parallelAgent, "Run simulation encounters exception: " + e.getMessage(), "severe_error");
 
             try(StringWriter errors = new StringWriter();

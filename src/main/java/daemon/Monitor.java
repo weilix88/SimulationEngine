@@ -59,6 +59,7 @@ public class Monitor implements Runnable {
 				if ((simulationCounter == 0 && runingSimulationNum != 0)
 						|| (simulationCounter != 0 && runingSimulationNum == 0)) {
 					LOG.warn("Simulation counter isn't consistant with running simulation num: " + simulationCounter + " vs " + runingSimulationNum);
+					StatusReporter.sendDaemonStatus("(Standalone sim engie) Simulation counter isn't consistant with running simulation num: " + simulationCounter + " vs " + runingSimulationNum, "log");
 				}
 
 				if (simulationCounter > 0) {
@@ -117,9 +118,9 @@ public class Monitor implements Runnable {
 									}
 
 									LOG.info("Running instance in VMSS: " + running);
-									StatusReporter.sendDaemonStatus("Running instance in VMSS: " + running, "log");
+									StatusReporter.sendDaemonStatus("(Standalone sim engie) Running instance in VMSS: " + running, "log");
 
-									int minNum = Integer.parseInt(EngineConfig.readProperty("AusoscalingMinInstance"));
+									/*int minNum = Integer.parseInt(EngineConfig.readProperty("AusoscalingMinInstance"));
 									if (running > minNum) {
 										// shutdown itself
 
@@ -136,10 +137,10 @@ public class Monitor implements Runnable {
 												break;
 											}
 										}
-									}
+									}*/
 								} catch (Throwable e) {
 									LOG.error(e.getMessage(), e);
-									StatusReporter.sendDaemonStatus(e.getMessage(), "error");
+									StatusReporter.sendDaemonStatus("(Standalone sim engine) "+e.getMessage(), "error");
 								}
 							}
 						}
@@ -152,7 +153,7 @@ public class Monitor implements Runnable {
 				}
 			}
 		}catch (Throwable e){
-            StatusReporter.sendEngineLog("Monitor encounters error and break while loop: "+e.getMessage(), "error");
+            StatusReporter.sendEngineLog("(Standalone sim engine) Monitor encounters error and break while loop: "+e.getMessage(), "error");
             running = false;
         }
     }
