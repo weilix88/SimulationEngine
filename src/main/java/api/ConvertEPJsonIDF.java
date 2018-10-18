@@ -1,6 +1,8 @@
 package main.java.api;
 
+import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
+import com.google.gson.JsonParser;
 import main.java.config.EngineConfig;
 import main.java.util.FileUtil;
 import main.java.util.RandomUtil;
@@ -27,7 +29,6 @@ public class ConvertEPJsonIDF extends HttpServlet {
     protected void doPost(HttpServletRequest req, HttpServletResponse resp) throws ServletException, IOException {
         LOG.info("epJSON to IDF receives request");
 
-        String version = null;
         File file = null;
 
         String basePath = EngineConfig.readProperty("tmpfolder");
@@ -60,9 +61,6 @@ public class ConvertEPJsonIDF extends HttpServlet {
                 }
                 break;
             }
-            if(fieldName.equals("version")){
-                version = IOUtils.toString(is, "UTF-8");
-            }
 
             is.close();
         }
@@ -77,7 +75,24 @@ public class ConvertEPJsonIDF extends HttpServlet {
             return;
         }
 
-        String energyPlusPath = FileUtil.getEnergyPlusPath("8.9");
+        // load epJSON file
+        String content = FileUtil.readStringFromFile(file);
+        JsonObject epJSON = new JsonParser().parse(content).getAsJsonObject();
+
+        String version = "8.9";
+        JsonElement versionElement = epJSON.get("Version");
+        if(versionElement!=null && !versionElement.isJsonNull()){
+            version = versionElement.getAsString();
+        }
+
+        String[] versionNum = version.split("\\.");
+        if(versionNum.length<2){
+            version = "8.9";
+        }else {
+            version = versionNum[0]+"."+versionNum[1];
+        }
+
+        String energyPlusPath = FileUtil.getEnergyPlusPath(version);
         String[] commandLines = {energyPlusPath+"energyplus.exe", "-c" ,"test.epJSON"};
         try {
             Process pr = Runtime.getRuntime().exec(commandLines, null, folder);
@@ -86,10 +101,10 @@ public class ConvertEPJsonIDF extends HttpServlet {
             // read the output from the command
             while (stdInput.readLine() != null);
 
-            String content = FileUtil.readStringFromFile(new File(path+"\\test.idf"));
+            String idfContent = FileUtil.readStringFromFile(new File(path+"\\test.idf"));
             jo.addProperty("status", "success");
-            jo.addProperty("content", content);
-        }catch (IOException e) {
+            jo.addProperty("content", idfContent);
+        }catch (Throwable e) {
             LOG.error(e.getMessage(), e);
             jo.addProperty("status", "error");
             jo.addProperty("content", e.getMessage());

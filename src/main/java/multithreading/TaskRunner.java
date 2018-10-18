@@ -536,7 +536,7 @@ public class TaskRunner implements Runnable {
                 access.rpush("TaskStatus#" + requestId, "Status_FINISHED");
                 access.del("TaskServerIP#" + requestId);
 
-                //FileUtils.deleteDirectory(new File(path));
+                FileUtils.deleteDirectory(new File(path));
             } else {
             	LOG.info("Simulation output stream not captured");
                 access.rpush("TaskStatus#" + requestId, "Status_ERROR");
@@ -645,7 +645,7 @@ public class TaskRunner implements Runnable {
         }
 
         // save to file storage
-        CloudFileUploader uploader = new AzureFileUploader();
+        CloudFileUploader uploader = CloudFileUploaderFactory.getCloudFileUploader();
         if (!EngineConfig.readProperty("platform").equals("azure")) {
             uploader.createFolder(EngineConfig.readProperty("LargeSimResultFileSave"), commitId);
         }
