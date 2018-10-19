@@ -82,7 +82,12 @@ public class ConvertEPJsonIDF extends HttpServlet {
         String version = "8.9";
         JsonElement versionElement = epJSON.get("Version");
         if(versionElement!=null && !versionElement.isJsonNull()){
-            version = versionElement.getAsString();
+            try {
+                version = versionElement.getAsJsonObject().get("Version 1").getAsJsonObject()
+                        .get("version_identifier").getAsString();
+            }catch(Throwable e) {
+                version = "8.9";
+            }
         }
 
         String[] versionNum = version.split("\\.");
