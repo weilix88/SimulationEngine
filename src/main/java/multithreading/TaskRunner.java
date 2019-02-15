@@ -460,8 +460,10 @@ public class TaskRunner implements Runnable {
                     String fName = f.getName();
                     if (fName.endsWith(".html") || fName.endsWith(".htm")) {
                         files[0] = fName;
-                    } else if (fName.equalsIgnoreCase("eplusout.err") || fName.equalsIgnoreCase("IDF.err")) {
+                    } else if (fName.equalsIgnoreCase("eplusout.err") || fName.equalsIgnoreCase("idf.err")) {
                         files[1] = fName;
+                    } else if(fName.endsWith("Table.csv")){
+                        files[7] = fName;
                     } else if (fName.endsWith(".csv")) {
                         files[2] = fName;
                     } else if (fName.endsWith(".eso")) {
@@ -521,7 +523,7 @@ public class TaskRunner implements Runnable {
 
                 access.set("Taskerr#" + requestId, readCompressedBase64String(path + files[1]));
                 access.set("Taskcsv#" + requestId, readCompressedBase64String(path + files[2]));
-                //access.set("Taskeso#" + requestId, outputESO ? readCompressedBase64String(path + files[3]) : "");
+                access.set("Tasktable_csv#" + requestId, readCompressedBase64String(path + files[7]));
                 if (outputESO && !StringUtil.isNullOrEmpty(files[3])) {
                     String msg = saveLargeResultToFileStorage(commitId, path, "eso" + parallelAgent, path + files[3]);
 
