@@ -1,38 +1,31 @@
 package main.java.multithreading;
 
-import java.io.IOException;
-import java.util.List;
-import java.util.UUID;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
-import java.util.concurrent.ThreadPoolExecutor;
-
+import com.google.gson.JsonObject;
 import com.google.gson.JsonParseException;
-import com.google.gson.JsonPrimitive;
+import com.google.gson.JsonParser;
+import main.java.cloud.RedisAccess;
+import main.java.cloud.RedisAccessFactory;
 import main.java.daemon.Monitor;
 import main.java.httpClientConnect.StatusReporter;
 import main.java.util.ProcessUtil;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import com.google.gson.JsonObject;
-import com.google.gson.JsonParser;
+import java.util.List;
+import java.util.UUID;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ThreadPoolExecutor;
 
-import main.java.cloud.RedisAccess;
-import main.java.cloud.RedisAccessFactory;
-
-public class SimEngine implements Runnable{
+public class SimEngine implements Runnable {
+    public static final String EngineID = UUID.randomUUID().toString();
     private final static Logger LOG = LoggerFactory.getLogger(SimEngine.class);
-    
     private static volatile SimEngine engine = null;
     private static ThreadPoolExecutor executor = null;
-
     private static volatile Monitor monitor = null;
     private static ExecutorService singleExecutor = null;
 
-    public static final String EngineID = UUID.randomUUID().toString();
-    
-    public static void wakeSimEngine(){
+    public static void wakeSimEngine() {
         try {
             if (engine == null) {
                 synchronized (SimEngine.class) {
@@ -57,28 +50,28 @@ public class SimEngine implements Runnable{
                     }
                 }
             }
-        }catch (Throwable e){
-            StatusReporter.sendEngineLog("Engine wake encounters error: "+e.getMessage(), "error");
+        } catch (Throwable e) {
+            StatusReporter.sendEngineLog("Engine wake encounters error: " + e.getMessage(), "error");
             engine.sendNotification();
         }
     }
-    
-    protected synchronized void sendNotification(){
-        this.notify();
-    }
-    
-    public static void shutdown(){
-        if(executor!=null && !executor.isShutdown()){
+
+    public static void shutdown() {
+        if (executor != null && !executor.isShutdown()) {
             executor.shutdownNow();
         }
     }
-    
-    public static boolean isShutdown(){
-        return engine==null;
+
+    public static boolean isShutdown() {
+        return engine == null;
     }
-    
-    private static void nullifyEngine(){
+
+    private static void nullifyEngine() {
         engine = null;
+    }
+
+    protected synchronized void sendNotification() {
+        this.notify();
     }
 
     @Override
@@ -99,20 +92,18 @@ public class SimEngine implements Runnable{
                     List<String> runningEplus = ProcessUtil.getPIDs();
                     int runningEplusNum = runningEplus.size();
 
-                    StatusReporter.sendEngineLog("Engine running full number simulation: "+runningSimulations+" vs "+runningEplusNum, "info");
+                    StatusReporter.sendEngineLog("Engine running full number simulation: " + runningSimulations + " vs " + runningEplusNum, "info");
 
                     try {
                         this.wait();
-                    } catch (InterruptedException e) {
+                    } catch (InterruptedException ignore) {
                     }
                     continue;
                 }
 
-                String jsonInString = null;
+                String jsonInString;
                 try (RedisAccess access = RedisAccessFactory.getAccess()) {
                     jsonInString = access.rpop("TaskQueue");
-                } catch (IOException e) {
-                    LOG.error(e.getMessage(), e);
                 }
 
                 if (jsonInString != null) {
@@ -120,8 +111,8 @@ public class SimEngine implements Runnable{
 
                     try {
                         jo = jp.parse(jsonInString).getAsJsonObject();
-                    }catch (JsonParseException e){
-                        StatusReporter.sendEngineLog("Input json str not valid: "+jsonInString+", "+e.getMessage(), "error");
+                    } catch (JsonParseException e) {
+                        StatusReporter.sendEngineLog("Input json str not valid: " + jsonInString + ", " + e.getMessage(), "error");
                         continue;
                     }
 
@@ -129,7 +120,7 @@ public class SimEngine implements Runnable{
                     RedisAccess access = RedisAccessFactory.getAccess();
                     access.rpush("TaskStatus#" + requestId, "Preprocessing");
                     access.expire("TaskStatus#" + requestId);
-                    LOG.info("Sim engine pushed preprocessing, "+requestId);
+                    LOG.info("Sim engine pushed preprocessing, " + requestId);
 
                     // run simulation
                     executor.execute(new TaskRunner(jo, access));
@@ -137,13 +128,12 @@ public class SimEngine implements Runnable{
                 } else {
                     try {
                         this.wait();
-                    } catch (InterruptedException e) {
+                    } catch (InterruptedException ignore) {
                     }
-                    continue;
                 }
             }
-        }catch (Throwable e){
-            StatusReporter.sendEngineLog("Engine encounters error and break while-true: "+e.getMessage(), "error");
+        } catch (Throwable e) {
+            StatusReporter.sendEngineLog("Engine encounters error and break while-true: " + e.getMessage(), "error");
             SimEngine.nullifyEngine();
         }
     }

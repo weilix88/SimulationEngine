@@ -296,8 +296,7 @@ public class TaskRunner implements Runnable {
                 PrintWriter pw = new PrintWriter(errors)){
                 e.printStackTrace(pw);
                 StatusReporter.sendLog(commitId, parallelAgent, "Error stack trace: " + errors.toString(), "log");
-            }catch (IOException ex){
-            }
+            }catch (IOException ignore){}
 
             /**
              * clean up request id, PID records
@@ -315,9 +314,7 @@ public class TaskRunner implements Runnable {
              * try to run next simulation
              */
             SimEngine.wakeSimEngine();
-            try {
-                this.access.close();
-            } catch (IOException e1) {}
+            this.access.close();
             return;
         }
 
@@ -385,8 +382,7 @@ public class TaskRunner implements Runnable {
                 PrintWriter pw = new PrintWriter(errors)){
                 e.printStackTrace(pw);
                 StatusReporter.sendLog(commitId, parallelAgent, "Error stack trace: " + errors.toString(), "log");
-            }catch (IOException ex){
-            }
+            }catch (IOException ignore){}
 
             /**
              * clean up request id, PID records
@@ -396,15 +392,13 @@ public class TaskRunner implements Runnable {
 
             try {
                 folder.delete();
-            }catch(Exception ex){}
+            }catch(Exception ignore){}
 
             /**
              * try to run next simulation
              */
             SimEngine.wakeSimEngine();
-            try {
-                this.access.close();
-            } catch (IOException e1) {}
+            this.access.close();
             return;
         }
 
@@ -557,16 +551,12 @@ public class TaskRunner implements Runnable {
             }catch (IOException ex){
             }
         } finally {
-            try {
-                this.access.close();
-            } catch (IOException e) {
-            }
+            this.access.close();
 
             if (stdInput != null) {
                 try {
                     stdInput.close();
-                } catch (IOException e) {
-                }
+                } catch (IOException ignore) {}
             }
 
             /**
@@ -580,9 +570,7 @@ public class TaskRunner implements Runnable {
              * try to run next simulation
              */
             SimEngine.wakeSimEngine();
-            try {
-                this.access.close();
-            } catch (IOException e1) {}
+            this.access.close();
         }
     }
 
