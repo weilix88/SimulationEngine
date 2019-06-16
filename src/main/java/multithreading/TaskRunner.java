@@ -2,7 +2,6 @@ package main.java.multithreading;
 
 import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
-import main.java.azure.fileStorage.AzureFileUploader;
 import main.java.cloud.*;
 import main.java.config.EngineConfig;
 import main.java.httpClientConnect.StatusReporter;
@@ -21,6 +20,7 @@ import org.slf4j.LoggerFactory;
 import java.io.*;
 import java.net.URI;
 import java.net.URISyntaxException;
+import java.nio.charset.StandardCharsets;
 import java.util.Base64;
 import java.util.Iterator;
 import java.util.List;
@@ -69,11 +69,11 @@ public class TaskRunner implements Runnable {
         String line = null;
         String lineBreaker = System.lineSeparator();
         try (FileInputStream fis = new FileInputStream(batchFile);
-             InputStreamReader isr = new InputStreamReader(fis, "UTF-8");
+             InputStreamReader isr = new InputStreamReader(fis, StandardCharsets.UTF_8);
              BufferedReader batchBR = new BufferedReader(isr);
 
              FileOutputStream fos = new FileOutputStream(destFile);
-             OutputStreamWriter osw = new OutputStreamWriter(fos, "UTF-8");
+             OutputStreamWriter osw = new OutputStreamWriter(fos, StandardCharsets.UTF_8);
              BufferedWriter destBW = new BufferedWriter(osw)) {
             while ((line = batchBR.readLine()) != null) {
                 if (line.contains(programPath)) {
@@ -257,7 +257,7 @@ public class TaskRunner implements Runnable {
             StatusReporter.sendLog(commitId, parallelAgent, "Task runner starts to run " + requestId, "log");
 
             List<String> pids = ProcessUtil.getPIDs();
-            StatusReporter.sendLog(commitId, parallelAgent, "Running simulation: " + SimulationManager.INSTANCE.getRunningSimulation() +" vs "+pids.size(), "log");
+            StatusReporter.sendLog(commitId, parallelAgent, "Running simulation: " + SimulationManager.INSTANCE.getRunningSimulation() + " vs " + pids.size(), "log");
 
             if (jo.has("expand_objects")) {
                 expandObjects = jo.get("expand_objects").getAsBoolean();
@@ -288,15 +288,16 @@ public class TaskRunner implements Runnable {
             } else {
                 folder.mkdirs();
             }
-        }catch (Throwable e){
-        	LOG.error("Init simulation folder failed: " + e.getMessage());
+        } catch (Throwable e) {
+            LOG.error("Init simulation folder failed: " + e.getMessage());
             StatusReporter.sendLog(commitId, parallelAgent, "Init simulation folder failed: " + e.getMessage(), "error");
 
-            try(StringWriter errors = new StringWriter();
-                PrintWriter pw = new PrintWriter(errors)){
+            try (StringWriter errors = new StringWriter();
+                 PrintWriter pw = new PrintWriter(errors)) {
                 e.printStackTrace(pw);
                 StatusReporter.sendLog(commitId, parallelAgent, "Error stack trace: " + errors.toString(), "log");
-            }catch (IOException ignore){}
+            } catch (IOException ignore) {
+            }
 
             /**
              * clean up request id, PID records
@@ -304,10 +305,11 @@ public class TaskRunner implements Runnable {
             SimulationManager.INSTANCE.finishSimulation(requestId);
             StatusReporter.sendStatus(commitId, parallelAgent, "finished", "finished");
 
-            if(folder!=null){
+            if (folder != null) {
                 try {
                     folder.delete();
-                }catch(Exception ex){}
+                } catch (Exception ex) {
+                }
             }
 
             /**
@@ -374,15 +376,16 @@ public class TaskRunner implements Runnable {
             } else {
                 commandline = new String[]{batchPath, path + "IDF", "weatherfile"};
             }
-        }catch(Throwable e){
-        	LOG.error("Prepare simulation failed: " + e.getMessage());
+        } catch (Throwable e) {
+            LOG.error("Prepare simulation failed: " + e.getMessage());
             StatusReporter.sendLog(commitId, parallelAgent, "Prepare simulation failed: " + e.getMessage(), "error");
 
-            try(StringWriter errors = new StringWriter();
-                PrintWriter pw = new PrintWriter(errors)){
+            try (StringWriter errors = new StringWriter();
+                 PrintWriter pw = new PrintWriter(errors)) {
                 e.printStackTrace(pw);
                 StatusReporter.sendLog(commitId, parallelAgent, "Error stack trace: " + errors.toString(), "log");
-            }catch (IOException ignore){}
+            } catch (IOException ignore) {
+            }
 
             /**
              * clean up request id, PID records
@@ -392,7 +395,8 @@ public class TaskRunner implements Runnable {
 
             try {
                 folder.delete();
-            }catch(Exception ignore){}
+            } catch (Exception ignore) {
+            }
 
             /**
              * try to run next simulation
@@ -409,7 +413,7 @@ public class TaskRunner implements Runnable {
             access.set("TaskServerIP#" + requestId, InstanceInfo.getPublicIP());
             //LOG.info("Simulation server public IP: " + InstanceInfo.getPublicIP());
 
-            LOG.info("Task runner going to start simulation " + commitId +" - " + requestId);
+            LOG.info("Task runner going to start simulation " + commitId + " - " + requestId);
 
             // SimulationManager will start simulation and collect PID one by one
             StartSimulationWrapper wrapper = SimulationManager.INSTANCE.startSimulation(requestId, commandline, path);
@@ -456,7 +460,7 @@ public class TaskRunner implements Runnable {
                         files[0] = fName;
                     } else if (fName.equalsIgnoreCase("eplusout.err") || fName.equalsIgnoreCase("idf.err")) {
                         files[1] = fName;
-                    } else if(fName.endsWith("Table.csv")){
+                    } else if (fName.endsWith("Table.csv")) {
                         files[7] = fName;
                     } else if (fName.endsWith(".csv")) {
                         files[2] = fName;
@@ -505,7 +509,7 @@ public class TaskRunner implements Runnable {
                         }
                     }
 
-                  
+
                     String processedHTML = htmlDoc.outerHtml();
                     byte[] compressed = FileUtil.compressString(processedHTML);
                     String base64Encoded = Base64.getEncoder().encodeToString(compressed);
@@ -513,7 +517,7 @@ public class TaskRunner implements Runnable {
 
                     StatusReporter.sendLog(commitId, parallelAgent, "HTML extraction finished", "log");
 
-                 }
+                }
 
                 access.set("Taskerr#" + requestId, readCompressedBase64String(path + files[1]));
                 access.set("Taskcsv#" + requestId, readCompressedBase64String(path + files[2]));
@@ -534,21 +538,21 @@ public class TaskRunner implements Runnable {
 
                 FileUtils.deleteDirectory(new File(path));
             } else {
-            	LOG.info("Simulation output stream not captured");
+                LOG.info("Simulation output stream not captured");
                 access.rpush("TaskStatus#" + requestId, "Status_ERROR");
                 access.set("TaskErrorMessage#" + requestId, "Simulation output stream not captured");
 
                 StatusReporter.sendLog(commitId, parallelAgent, "Simulation output stream not captured", "severe_error");
             }
         } catch (Throwable e) {
-        	LOG.error("Run simulation encounters exception: " + e.getMessage());
+            LOG.error("Run simulation encounters exception: " + e.getMessage());
             StatusReporter.sendLog(commitId, parallelAgent, "Run simulation encounters exception: " + e.getMessage(), "severe_error");
 
-            try(StringWriter errors = new StringWriter();
-                PrintWriter pw = new PrintWriter(errors)){
+            try (StringWriter errors = new StringWriter();
+                 PrintWriter pw = new PrintWriter(errors)) {
                 e.printStackTrace(pw);
                 StatusReporter.sendLog(commitId, parallelAgent, "Error stack trace: " + errors.toString(), "log");
-            }catch (IOException ex){
+            } catch (IOException ex) {
             }
         } finally {
             this.access.close();
@@ -556,7 +560,8 @@ public class TaskRunner implements Runnable {
             if (stdInput != null) {
                 try {
                     stdInput.close();
-                } catch (IOException ignore) {}
+                } catch (IOException ignore) {
+                }
             }
 
             /**
@@ -564,7 +569,7 @@ public class TaskRunner implements Runnable {
              */
             SimulationManager.INSTANCE.finishSimulation(requestId);
 
-            StatusReporter.sendLog(commitId, parallelAgent, "Running simulation: "+SimulationManager.INSTANCE.getRunningSimulation(), "log");
+            StatusReporter.sendLog(commitId, parallelAgent, "Running simulation: " + SimulationManager.INSTANCE.getRunningSimulation(), "log");
             StatusReporter.sendStatus(commitId, parallelAgent, "finished", "finished");
             /**
              * try to run next simulation
